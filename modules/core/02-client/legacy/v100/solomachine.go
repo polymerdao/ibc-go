@@ -88,8 +88,22 @@ func (cs ClientState) ExportMetadata(_ sdk.KVStore) []exported.GenesisMetadata {
 	panic("legacy solo machine is deprecated!")
 }
 
-// CheckHeaderAndUpdateState panics!
-func (cs *ClientState) CheckHeaderAndUpdateState(
+// VerifyHeader panics!
+func (cs *ClientState) VerifyHeader(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
+) error {
+	panic("legacy solo machine is deprecated!")
+}
+
+// CheckHeaderForMisbehaviour panics!
+func (cs *ClientState) CheckHeaderForMisbehaviour(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
+) bool {
+	panic("legacy solo machine is deprecated!")
+}
+
+// UpdateStateFromHeader panics!
+func (cs *ClientState) UpdateStateFromHeader(
 	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
 ) (exported.ClientState, exported.ConsensusState, error) {
 	panic("legacy solo machine is deprecated!")

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	tmtypes "github.com/tendermint/tendermint/types"
+	"go.uber.org/multierr"
 
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v3/modules/core/23-commitment/types"
@@ -338,12 +339,29 @@ func (suite *TendermintTestSuite) TestCheckHeaderAndUpdateState() {
 				NextValidatorsHash: newHeader.Header.NextValidatorsHash,
 			}
 
-			newClientState, consensusState, err := clientState.CheckHeaderAndUpdateState(
+			store := suite.chainA.App.GetIBCKeeper().ClientKeeper.ClientStore(suite.chainA.GetContext(), clientID) // pass in clientID prefixed clientStore
+			err := clientState.VerifyHeader(
 				ctx,
 				suite.cdc,
-				suite.chainA.App.GetIBCKeeper().ClientKeeper.ClientStore(suite.chainA.GetContext(), clientID), // pass in clientID prefixed clientStore
+				store,
 				newHeader,
 			)
+
+			misbehaving := clientState.CheckHeaderForMisbehaviour(
+				ctx,
+				suite.cdc,
+				store,
+				newHeader,
+			)
+			suite.Require().Equal(tc.expFrozen, misbehaving) // should be frozen if misbehaving
+
+			newClientState, consensusState, updateErr := clientState.UpdateStateFromHeader(
+				ctx,
+				suite.cdc,
+				store,
+				newHeader,
+			)
+			err = multierr.Append(err, updateErr)
 
 			if tc.expPass {
 				suite.Require().NoError(err, "valid test case %d failed: %s", i, tc.name)

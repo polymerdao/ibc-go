@@ -163,7 +163,11 @@ func (suite *LocalhostTestSuite) TestVerifyClientConsensusState() {
 
 func (suite *LocalhostTestSuite) TestCheckHeaderAndUpdateState() {
 	clientState := types.NewClientState("chainID", clientHeight)
-	cs, _, err := clientState.CheckHeaderAndUpdateState(suite.ctx, nil, nil, nil)
+	err := clientState.VerifyHeader(suite.ctx, nil, nil, nil)
+	suite.Require().NoError(err)
+	misbehaving := clientState.CheckHeaderForMisbehaviour(suite.ctx, nil, nil, nil)
+	suite.Require().False(misbehaving)
+	cs, _, err := clientState.UpdateHeaderFromState(suite.ctx, nil, nil, nil)
 	suite.Require().NoError(err)
 	suite.Require().Equal(uint64(0), cs.GetLatestHeight().GetRevisionNumber())
 	suite.Require().Equal(suite.ctx.BlockHeight(), int64(cs.GetLatestHeight().GetRevisionHeight()))

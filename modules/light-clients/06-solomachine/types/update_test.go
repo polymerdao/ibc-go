@@ -3,6 +3,7 @@ package types_test
 import (
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"go.uber.org/multierr"
 
 	"github.com/cosmos/ibc-go/v3/modules/core/exported"
 	"github.com/cosmos/ibc-go/v3/modules/light-clients/06-solomachine/types"
@@ -163,7 +164,12 @@ func (suite *SoloMachineTestSuite) TestCheckHeaderAndUpdateState() {
 				// setup test
 				tc.setup()
 
-				clientState, consensusState, err := clientState.CheckHeaderAndUpdateState(suite.chainA.GetContext(), suite.chainA.Codec, suite.store, header)
+				err := clientState.VerifyHeader(suite.chainA.GetContext(), suite.chainA.Codec, suite.store, header)
+				misbehaving := clientState.CheckHeaderForMisbehaviour(suite.chainA.GetContext(), suite.chainA.Codec, suite.store, header)
+				suite.Require().False(misbehaving) // No misbehaviour checks expected.
+
+				clientState, consensusState, updateErr := clientState.UpdateStateFromHeader(suite.chainA.GetContext(), suite.chainA.Codec, suite.store, header)
+				err = multierr.Append(err, updateErr)
 
 				if tc.expPass {
 					suite.Require().NoError(err)

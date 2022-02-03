@@ -9,28 +9,40 @@ import (
 	"github.com/cosmos/ibc-go/v3/modules/core/exported"
 )
 
-// CheckHeaderAndUpdateState checks if the provided header is valid and updates
+// VerifyHeader checks if the provided header is valid and updates
 // the consensus state if appropriate. It returns an error if:
 // - the header provided is not parseable to a solo machine header
 // - the header sequence does not match the current sequence
 // - the header timestamp is less than the consensus state timestamp
 // - the currently registered public key did not provide the update signature
-func (cs ClientState) CheckHeaderAndUpdateState(
+func (cs ClientState) VerifyHeader(
 	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
 	header exported.Header,
-) (exported.ClientState, exported.ConsensusState, error) {
+) error {
 	smHeader, ok := header.(*Header)
 	if !ok {
-		return nil, nil, sdkerrors.Wrapf(
+		return sdkerrors.Wrapf(
 			clienttypes.ErrInvalidHeader, "header type %T, expected  %T", header, &Header{},
 		)
 	}
 
-	if err := checkHeader(cdc, &cs, smHeader); err != nil {
-		return nil, nil, err
-	}
+	return checkHeader(cdc, &cs, smHeader)
+}
 
-	clientState, consensusState := update(&cs, smHeader)
+// CheckHeaderForMisbehaviour is a no-op.
+func (cs ClientState) CheckHeaderForMisbehaviour(
+	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
+	header exported.Header,
+) bool {
+	return false
+}
+
+// UpdateStateFromHeader updates the consensus state.
+func (cs ClientState) UpdateStateFromHeader(
+	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
+	header exported.Header,
+) (exported.ClientState, exported.ConsensusState, error) {
+	clientState, consensusState := update(&cs, header.(*Header))
 	return clientState, consensusState, nil
 }
 

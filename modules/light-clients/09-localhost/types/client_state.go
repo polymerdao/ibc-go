@@ -77,8 +77,22 @@ func (cs ClientState) ExportMetadata(_ sdk.KVStore) []exported.GenesisMetadata {
 	return nil
 }
 
-// CheckHeaderAndUpdateState updates the localhost client. It only needs access to the context
-func (cs *ClientState) CheckHeaderAndUpdateState(
+// VerifyHeader is a no-op.
+func (cs *ClientState) VerifyHeader(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
+) error {
+	return nil
+}
+
+// CheckHeaderForMisbehaviour is a no-op.
+func (cs *ClientState) CheckHeaderForMisbehaviour(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
+) bool {
+	return false
+}
+
+// UpdateStateFromHeader updates the localhost client. It only needs access to the context
+func (cs *ClientState) UpdateStateFromHeader(
 	ctx sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
 ) (exported.ClientState, exported.ConsensusState, error) {
 	// use the chain ID from context since the localhost client is from the running chain (i.e self).

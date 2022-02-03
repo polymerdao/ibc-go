@@ -69,9 +69,34 @@ func (k Keeper) UpdateClient(ctx sdk.Context, clientID string, header exported.H
 
 	eventType := types.EventTypeUpdateClient
 
-	// Any writes made in CheckHeaderAndUpdateState are persisted on both valid updates and misbehaviour updates.
-	// Light client implementations are responsible for writing the correct metadata (if any) in either case.
-	newClientState, newConsensusState, err := clientState.CheckHeaderAndUpdateState(ctx, k.cdc, clientStore, header)
+	if err := clientState.VerifyHeader(ctx, k.cdc, clientStore, header); err != nil {
+		return sdkerrors.Wrap(err, "header verification failed")
+	}
+
+	misbehaving := clientState.CheckHeaderForMisbehaviour(ctx, k.cdc, clientStore, header)
+	if misbehaving {
+		// set eventType to SubmitMisbehaviour
+		eventType = types.EventTypeSubmitMisbehaviour
+
+		k.Logger(ctx).Info("client frozen due to misbehaviour", "client-id", clientID)
+
+		defer func() {
+			telemetry.IncrCounterWithLabels(
+				[]string{"ibc", "client", "misbehaviour"},
+				1,
+				[]metrics.Label{
+					telemetry.NewLabel(types.LabelClientType, clientState.ClientType()),
+					telemetry.NewLabel(types.LabelClientID, clientID),
+					telemetry.NewLabel(types.LabelMsgType, "update"),
+				},
+			)
+		}()
+		return nil
+	}
+
+	// Any writes made in updates are persisted on valid updates.
+	// Light client implementations are responsible for writing the correct metadata.
+	newClientState, newConsensusState, err := clientState.UpdateStateFromHeader(ctx, k.cdc, clientStore, header)
 	if err != nil {
 		return sdkerrors.Wrapf(err, "cannot update client with ID %s", clientID)
 	}
@@ -91,51 +116,29 @@ func (k Keeper) UpdateClient(ctx sdk.Context, clientID string, header exported.H
 
 	}
 
-	// set new client state regardless of if update is valid update or misbehaviour
+	// We only make it this far if no misbehaviour is detected.
+	// Write the update state changes, and set new consensus state.
 	k.SetClientState(ctx, clientID, newClientState)
-	// If client state is not frozen after clientState CheckHeaderAndUpdateState,
-	// then update was valid. Write the update state changes, and set new consensus state.
-	// Else the update was proof of misbehaviour and we must emit appropriate misbehaviour events.
-	if status := newClientState.Status(ctx, clientStore, k.cdc); status != exported.Frozen {
-		// if update is not misbehaviour then update the consensus state
-		// we don't set consensus state for localhost client
-		if header != nil && clientID != exported.Localhost {
-			k.SetClientConsensusState(ctx, clientID, header.GetHeight(), newConsensusState)
-		} else {
-			consensusHeight = types.GetSelfHeight(ctx)
-		}
-
-		k.Logger(ctx).Info("client state updated", "client-id", clientID, "height", consensusHeight.String())
-
-		defer func() {
-			telemetry.IncrCounterWithLabels(
-				[]string{"ibc", "client", "update"},
-				1,
-				[]metrics.Label{
-					telemetry.NewLabel(types.LabelClientType, clientState.ClientType()),
-					telemetry.NewLabel(types.LabelClientID, clientID),
-					telemetry.NewLabel(types.LabelUpdateType, "msg"),
-				},
-			)
-		}()
+	// We don't set consensus state for localhost client.
+	if header != nil && clientID != exported.Localhost {
+		k.SetClientConsensusState(ctx, clientID, header.GetHeight(), newConsensusState)
 	} else {
-		// set eventType to SubmitMisbehaviour
-		eventType = types.EventTypeSubmitMisbehaviour
-
-		k.Logger(ctx).Info("client frozen due to misbehaviour", "client-id", clientID)
-
-		defer func() {
-			telemetry.IncrCounterWithLabels(
-				[]string{"ibc", "client", "misbehaviour"},
-				1,
-				[]metrics.Label{
-					telemetry.NewLabel(types.LabelClientType, clientState.ClientType()),
-					telemetry.NewLabel(types.LabelClientID, clientID),
-					telemetry.NewLabel(types.LabelMsgType, "update"),
-				},
-			)
-		}()
+		consensusHeight = types.GetSelfHeight(ctx)
 	}
+
+	k.Logger(ctx).Info("client state updated", "client-id", clientID, "height", consensusHeight.String())
+
+	defer func() {
+		telemetry.IncrCounterWithLabels(
+			[]string{"ibc", "client", "update"},
+			1,
+			[]metrics.Label{
+				telemetry.NewLabel(types.LabelClientType, clientState.ClientType()),
+				telemetry.NewLabel(types.LabelClientID, clientID),
+				telemetry.NewLabel(types.LabelUpdateType, "msg"),
+			},
+		)
+	}()
 
 	// emitting events in the keeper emits for both begin block and handler client updates
 	ctx.EventManager().EmitEvent(
