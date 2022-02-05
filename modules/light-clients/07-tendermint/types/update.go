@@ -16,9 +16,7 @@ import (
 	"github.com/cosmos/ibc-go/v3/modules/core/exported"
 )
 
-// VerifyHeader checks if the provided header is valid, and if valid it will:
-// create the consensus state for the header.Height
-// and update the client state if the header height is greater than the latest client state height
+// VerifyHeader checks if the provided header is valid.
 // It returns an error if:
 // - the client or header provided are not parseable to tendermint types
 // - the header is invalid
@@ -54,16 +52,37 @@ func (cs ClientState) VerifyHeader(
 	return nil
 }
 
-// CheckHeaderForMisbehaviour will detect implicit misbehaviour by enforcing certain invariants on any new update call and will return a frozen client.
+// CheckForMisbehaviour will detect implicit misbehaviour by enforcing certain invariants on any new update call and will return a frozen client.
 // 1. Any valid update that creates a different consensus state for an already existing height is evidence of misbehaviour and will freeze client.
 // 2. Any valid update that breaks time monotonicity with respect to its neighboring consensus states is evidence of misbehaviour and will freeze client.
 // Misbehaviour sets frozen height to {0, 1} since it is only used as a boolean value (zero or non-zero).
 //
-func (cs ClientState) CheckHeaderForMisbehaviour(
-	_ sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
+func (cs ClientState) CheckForMisbehaviour(
+	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
 	header exported.Header,
+) (bool, error) {
+	tmHeader, ok := header.(*Header)
+	if ok {
+		return cs.checkHeader(ctx, cdc, clientStore, tmHeader), nil
+	}
+
+	misbehaviour, ok := header.(*Misbehaviour)
+	if ok {
+		return cs.checkMisbehaviourHeader(ctx, cdc, clientStore, misbehaviour)
+	}
+
+	return false, sdkerrors.Wrap(clienttypes.ErrInvalidMisbehaviour, "unknown header type")
+}
+
+// checkHeader will detect implicit misbehaviour by enforcing certain invariants on any new update call and will return a frozen client.
+// 1. Any valid update that creates a different consensus state for an already existing height is evidence of misbehaviour and will freeze client.
+// 2. Any valid update that breaks time monotonicity with respect to its neighboring consensus states is evidence of misbehaviour and will freeze client.
+// Misbehaviour sets frozen height to {0, 1} since it is only used as a boolean value (zero or non-zero).
+//
+func (cs ClientState) checkHeader(
+	_ sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
+	header *Header,
 ) bool {
-	tmHeader := header.(*Header)
 	// Check if the Client store already has a consensus state for the header's height
 	// If the consensus state exists, and it matches the header then we return early
 	// since header has already been submitted in a previous UpdateClient.
@@ -72,7 +91,7 @@ func (cs ClientState) CheckHeaderForMisbehaviour(
 	if prevConsState != nil {
 		// This header has already been submitted and the necessary state is already stored
 		// in client store, thus we can return early without further validation.
-		if reflect.DeepEqual(prevConsState, tmHeader.ConsensusState()) {
+		if reflect.DeepEqual(prevConsState, header.ConsensusState()) {
 			return false
 		}
 		// A consensus state already exists for this height, but it does not match the provided header.
@@ -80,10 +99,9 @@ func (cs ClientState) CheckHeaderForMisbehaviour(
 		conflictingHeader = true
 	}
 
-	consState := tmHeader.ConsensusState()
+	consState := header.ConsensusState()
 	// Header is different from existing consensus state and also valid, so freeze the client and return
 	if conflictingHeader {
-		cs.FrozenHeight = FrozenHeight
 		return true
 	}
 
@@ -93,17 +111,24 @@ func (cs ClientState) CheckHeaderForMisbehaviour(
 	// if previous consensus state exists, check consensus state time is greater than previous consensus state time
 	// if previous consensus state is not before current consensus state, freeze the client and return.
 	if prevOk && !prevCons.Timestamp.Before(consState.Timestamp) {
-		cs.FrozenHeight = FrozenHeight
 		return true
 	}
 	// if next consensus state exists, check consensus state time is less than next consensus state time
 	// if next consensus state is not after current consensus state, freeze the client and return.
 	if nextOk && !nextCons.Timestamp.After(consState.Timestamp) {
-		cs.FrozenHeight = FrozenHeight
 		return true
 	}
 
 	return false
+}
+
+// UpdateStateOnMisbehaviour updates state upon misbehaviour. This method should only be called on misbehaviour
+// as it does not perform any misbehaviour checks.
+func (cs ClientState) UpdateStateOnMisbehaviour(
+	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
+) {
+	cs.FrozenHeight = FrozenHeight
+	SetClientState(clientStore, cdc, &cs)
 }
 
 // UpdateStateFromHeader may be used to either create a consensus state for:
@@ -124,7 +149,16 @@ func (cs ClientState) CheckHeaderForMisbehaviour(
 func (cs ClientState) UpdateStateFromHeader(
 	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
 	header exported.Header,
-) (exported.ClientState, exported.ConsensusState, error) {
+) error {
+	tmHeader := header.(*Header)
+	prevConsState, _ := GetConsensusState(clientStore, cdc, tmHeader.GetHeight())
+	if prevConsState != nil {
+		// Dupe header is a no-op.
+		if reflect.DeepEqual(prevConsState, tmHeader.ConsensusState()) {
+			return nil
+		}
+	}
+
 	// Check the earliest consensus state to see if it is expired, if so then set the prune height
 	// so that we can delete consensus state and all associated metadata.
 	var (
@@ -145,7 +179,7 @@ func (cs ClientState) UpdateStateFromHeader(
 	}
 	IterateConsensusStateAscending(clientStore, pruneCb)
 	if pruneError != nil {
-		return nil, nil, pruneError
+		return pruneError
 	}
 	// if pruneHeight is set, delete consensus state and metadata
 	if pruneHeight != nil {
@@ -153,9 +187,12 @@ func (cs ClientState) UpdateStateFromHeader(
 		deleteConsensusMetadata(clientStore, pruneHeight)
 	}
 
-	newClientState, consensusState := update(ctx, clientStore, &cs, header.(*Header))
+	newClientState, consensusState := update(ctx, clientStore, &cs, tmHeader)
+	// Light client impls must set client/consensus state (https://github.com/cosmos/ibc-go/issues/284)
+	SetConsensusState(clientStore, cdc, consensusState, tmHeader.GetHeight())
+	SetClientState(clientStore, cdc, newClientState)
 
-	return newClientState, consensusState, nil
+	return nil
 }
 
 // checkTrustedHeader checks that consensus state matches trusted fields of Header

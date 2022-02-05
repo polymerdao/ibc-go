@@ -6,6 +6,7 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
+	host "github.com/cosmos/ibc-go/v3/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v3/modules/core/exported"
 )
 
@@ -29,21 +30,37 @@ func (cs ClientState) VerifyHeader(
 	return checkHeader(cdc, &cs, smHeader)
 }
 
-// CheckHeaderForMisbehaviour is a no-op.
-func (cs ClientState) CheckHeaderForMisbehaviour(
+// CheckForMisbehaviour will check for misbehaviour.
+func (cs ClientState) CheckForMisbehaviour(
 	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
 	header exported.Header,
-) bool {
-	return false
+) (bool, error) {
+	misbehaviour, ok := header.(*Misbehaviour)
+	if ok {
+		return cs.checkMisbehaviourHeader(ctx, cdc, clientStore, misbehaviour)
+	}
+	// No handler for *Header
+	return false, nil
+}
+
+// UpdateStateOnMisbehaviour freezes client state on misbehaviour.
+func (cs ClientState) UpdateStateOnMisbehaviour(
+	_ sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
+) {
+	cs.IsFrozen = true
+	clientStore.Set(host.ClientStateKey(), clienttypes.MustMarshalClientState(cdc, &cs))
 }
 
 // UpdateStateFromHeader updates the consensus state.
 func (cs ClientState) UpdateStateFromHeader(
 	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore,
 	header exported.Header,
-) (exported.ClientState, exported.ConsensusState, error) {
-	clientState, consensusState := update(&cs, header.(*Header))
-	return clientState, consensusState, nil
+) error {
+	tmHeader := header.(*Header)
+	clientState, consensusState := update(&cs, tmHeader)
+	clientStore.Set(host.ConsensusStateKey(tmHeader.GetHeight()), clienttypes.MustMarshalConsensusState(cdc, consensusState))
+	clientStore.Set(host.ClientStateKey(), clienttypes.MustMarshalClientState(cdc, clientState))
+	return nil
 }
 
 // checkHeader checks if the Solo Machine update signature is valid.

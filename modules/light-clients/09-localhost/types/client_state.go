@@ -42,6 +42,16 @@ func (cs ClientState) GetLatestHeight() exported.Height {
 	return cs.Height
 }
 
+// GetTimestampAtHeight returns 0. Localhost client has no consensus state.
+func (cs ClientState) GetTimestampAtHeight(
+	_ sdk.Context,
+	_ sdk.KVStore,
+	_ codec.BinaryCodec,
+	_ exported.Height,
+) (uint64, error) {
+	return 0, nil
+}
+
 // Status always returns Active. The localhost status cannot be changed.
 func (cs ClientState) Status(_ sdk.Context, _ sdk.KVStore, _ codec.BinaryCodec,
 ) exported.Status {
@@ -84,31 +94,29 @@ func (cs *ClientState) VerifyHeader(
 	return nil
 }
 
-// CheckHeaderForMisbehaviour is a no-op.
-func (cs *ClientState) CheckHeaderForMisbehaviour(
+// CheckForMisbehaviour is a no-op.
+func (cs *ClientState) CheckForMisbehaviour(
 	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
-) bool {
-	return false
+) (bool, error) {
+	return false, nil
+}
+
+// UpdateStateOnMisbehaviour is a no-op.
+func (cs *ClientState) UpdateStateOnMisbehaviour(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore,
+) {
 }
 
 // UpdateStateFromHeader updates the localhost client. It only needs access to the context
 func (cs *ClientState) UpdateStateFromHeader(
-	ctx sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
-) (exported.ClientState, exported.ConsensusState, error) {
+	ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore, _ exported.Header,
+) error {
 	// use the chain ID from context since the localhost client is from the running chain (i.e self).
 	cs.ChainId = ctx.ChainID()
 	revision := clienttypes.ParseChainID(cs.ChainId)
 	cs.Height = clienttypes.NewHeight(revision, uint64(ctx.BlockHeight()))
-	return cs, nil, nil
-}
-
-// CheckMisbehaviourAndUpdateState implements ClientState
-// Since localhost is the client of the running chain, misbehaviour cannot be submitted to it
-// Thus, CheckMisbehaviourAndUpdateState returns an error for localhost
-func (cs ClientState) CheckMisbehaviourAndUpdateState(
-	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Misbehaviour,
-) (exported.ClientState, error) {
-	return nil, sdkerrors.Wrap(clienttypes.ErrInvalidMisbehaviour, "cannot submit misbehaviour to localhost client")
+	clientStore.Set(host.ClientStateKey(), clienttypes.MustMarshalClientState(cdc, cs))
+	return nil
 }
 
 // CheckSubstituteAndUpdateState returns an error. The localhost cannot be modified by
@@ -124,8 +132,8 @@ func (cs ClientState) CheckSubstituteAndUpdateState(
 func (cs ClientState) VerifyUpgradeAndUpdateState(
 	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore,
 	_ exported.ClientState, _ exported.ConsensusState, _, _ []byte,
-) (exported.ClientState, exported.ConsensusState, error) {
-	return nil, nil, sdkerrors.Wrap(clienttypes.ErrInvalidUpgradeClient, "cannot upgrade localhost client")
+) error {
+	return sdkerrors.Wrap(clienttypes.ErrInvalidUpgradeClient, "cannot upgrade localhost client")
 }
 
 // VerifyClientState verifies that the localhost client state is stored locally

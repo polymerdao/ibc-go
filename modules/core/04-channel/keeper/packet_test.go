@@ -171,7 +171,8 @@ func (suite *KeeperTestSuite) TestSendPacket() {
 			// use latest time on client state
 			clientState := path.EndpointA.GetClientState()
 			connection := path.EndpointA.GetConnection()
-			timestamp, err := suite.chainA.App.GetIBCKeeper().ConnectionKeeper.GetTimestampAtHeight(suite.chainA.GetContext(), connection, clientState.GetLatestHeight())
+			clientStore := suite.chainA.App.GetIBCKeeper().ClientKeeper.ClientStore(suite.chainA.GetContext(), connection.GetClientID())
+			timestamp, err := clientState.GetTimestampAtHeight(suite.chainA.GetContext(), suite.chainA.App.AppCodec(), clientStore, clientState.GetLatestHeight())
 			suite.Require().NoError(err)
 
 			packet = types.NewPacket(ibctesting.MockPacketData, 1, path.EndpointA.ChannelConfig.PortID, path.EndpointA.ChannelID, path.EndpointB.ChannelConfig.PortID, path.EndpointB.ChannelID, disabledTimeoutHeight, timestamp)

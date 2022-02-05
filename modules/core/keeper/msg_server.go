@@ -109,12 +109,12 @@ func (k Keeper) UpgradeClient(goCtx context.Context, msg *clienttypes.MsgUpgrade
 func (k Keeper) SubmitMisbehaviour(goCtx context.Context, msg *clienttypes.MsgSubmitMisbehaviour) (*clienttypes.MsgSubmitMisbehaviourResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	misbehaviour, err := clienttypes.UnpackMisbehaviour(msg.Misbehaviour)
+	misbehaviour, err := clienttypes.UnpackHeader(msg.Misbehaviour)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := k.ClientKeeper.CheckMisbehaviourAndUpdateState(ctx, misbehaviour); err != nil {
+	if err := k.ClientKeeper.CheckMisbehaviourAndUpdateState(ctx, msg.ClientId, misbehaviour); err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to process misbehaviour for IBC client")
 	}
 

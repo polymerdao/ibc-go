@@ -22,7 +22,8 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 		&Header{},
 	)
 	registry.RegisterImplementations(
-		(*exported.Misbehaviour)(nil),
+		// Misbehaviour messages are parsed as a generic Header (https://github.com/cosmos/ibc-go/issues/284)
+		(*exported.Header)(nil),
 		&Misbehaviour{},
 	)
 }

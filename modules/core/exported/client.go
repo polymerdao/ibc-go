@@ -56,12 +56,11 @@ type ClientState interface {
 	// Genesis function
 	ExportMetadata(sdk.KVStore) []GenesisMetadata
 
-	// Update and Misbehaviour functions
-
+	// Verify, Update and Misbehaviour functions
 	VerifyHeader(sdk.Context, codec.BinaryCodec, sdk.KVStore, Header) error
-	CheckHeaderForMisbehaviour(sdk.Context, codec.BinaryCodec, sdk.KVStore, Header) bool
-	UpdateStateFromHeader(sdk.Context, codec.BinaryCodec, sdk.KVStore, Header) (ClientState, ConsensusState, error)
-	CheckMisbehaviourAndUpdateState(sdk.Context, codec.BinaryCodec, sdk.KVStore, Misbehaviour) (ClientState, error)
+	CheckForMisbehaviour(sdk.Context, codec.BinaryCodec, sdk.KVStore, Header) (bool, error)
+	UpdateStateOnMisbehaviour(sdk.Context, codec.BinaryCodec, sdk.KVStore)
+	UpdateStateFromHeader(sdk.Context, codec.BinaryCodec, sdk.KVStore, Header) error
 	CheckSubstituteAndUpdateState(ctx sdk.Context, cdc codec.BinaryCodec, subjectClientStore, substituteClientStore sdk.KVStore, substituteClient ClientState) (ClientState, error)
 
 	// Upgrade functions
@@ -78,7 +77,7 @@ type ClientState interface {
 		newConsState ConsensusState,
 		proofUpgradeClient,
 		proofUpgradeConsState []byte,
-	) (ClientState, ConsensusState, error)
+	) error
 	// Utility function that zeroes out any client customizable fields in client state
 	// Ledger enforced fields are maintained while all custom fields are zero values
 	// Used to verify upgrades
@@ -178,6 +177,13 @@ type ClientState interface {
 		channelID string,
 		nextSequenceRecv uint64,
 	) error
+
+	GetTimestampAtHeight(
+		ctx sdk.Context,
+		clientStore sdk.KVStore,
+		cdc codec.BinaryCodec,
+		height Height,
+	) (uint64, error)
 }
 
 // ConsensusState is the state of the consensus process
@@ -196,21 +202,11 @@ type ConsensusState interface {
 	ValidateBasic() error
 }
 
-// Misbehaviour defines counterparty misbehaviour for a specific consensus type
-type Misbehaviour interface {
-	proto.Message
-
-	ClientType() string
-	GetClientID() string
-	ValidateBasic() error
-}
-
 // Header is the consensus state update information
 type Header interface {
 	proto.Message
 
 	ClientType() string
-	GetHeight() Height
 	ValidateBasic() error
 }
 

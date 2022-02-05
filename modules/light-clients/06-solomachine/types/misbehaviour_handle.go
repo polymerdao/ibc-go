@@ -4,47 +4,34 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-
-	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
-	"github.com/cosmos/ibc-go/v3/modules/core/exported"
 )
 
-// CheckMisbehaviourAndUpdateState determines whether or not the currently registered
+// checkMisbehaviourHeader determines whether or not the currently registered
 // public key signed over two different messages with the same sequence. If this is true
 // the client state is updated to a frozen status.
 // NOTE: Misbehaviour is not tracked for previous public keys, a solo machine may update to
 // a new public key before the misbehaviour is processed. Therefore, misbehaviour is data
 // order processing dependent.
-func (cs ClientState) CheckMisbehaviourAndUpdateState(
+func (cs ClientState) checkMisbehaviourHeader(
 	ctx sdk.Context,
 	cdc codec.BinaryCodec,
 	clientStore sdk.KVStore,
-	misbehaviour exported.Misbehaviour,
-) (exported.ClientState, error) {
-
-	soloMisbehaviour, ok := misbehaviour.(*Misbehaviour)
-	if !ok {
-		return nil, sdkerrors.Wrapf(
-			clienttypes.ErrInvalidClientType,
-			"misbehaviour type %T, expected %T", misbehaviour, &Misbehaviour{},
-		)
-	}
-
+	misbehaviour *Misbehaviour,
+) (bool, error) {
 	// NOTE: a check that the misbehaviour message data are not equal is done by
 	// misbehaviour.ValidateBasic which is called by the 02-client keeper.
 
 	// verify first signature
-	if err := verifySignatureAndData(cdc, cs, soloMisbehaviour, soloMisbehaviour.SignatureOne); err != nil {
-		return nil, sdkerrors.Wrap(err, "failed to verify signature one")
+	if err := verifySignatureAndData(cdc, cs, misbehaviour, misbehaviour.SignatureOne); err != nil {
+		return false, sdkerrors.Wrap(err, "failed to verify signature one")
 	}
 
 	// verify second signature
-	if err := verifySignatureAndData(cdc, cs, soloMisbehaviour, soloMisbehaviour.SignatureTwo); err != nil {
-		return nil, sdkerrors.Wrap(err, "failed to verify signature two")
+	if err := verifySignatureAndData(cdc, cs, misbehaviour, misbehaviour.SignatureTwo); err != nil {
+		return false, sdkerrors.Wrap(err, "failed to verify signature two")
 	}
 
-	cs.IsFrozen = true
-	return &cs, nil
+	return true, nil
 }
 
 // verifySignatureAndData verifies that the currently registered public key has signed

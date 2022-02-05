@@ -10,7 +10,7 @@ import (
 	"github.com/cosmos/ibc-go/v3/modules/core/exported"
 )
 
-var _ exported.Misbehaviour = &Misbehaviour{}
+var _ exported.Header = &Misbehaviour{}
 
 // ClientType is a Solo Machine light client.
 func (misbehaviour Misbehaviour) ClientType() string {

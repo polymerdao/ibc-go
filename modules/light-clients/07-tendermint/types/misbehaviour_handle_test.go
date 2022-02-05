@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"go.uber.org/multierr"
 
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v3/modules/core/23-commitment/types"
@@ -45,7 +46,7 @@ func (suite *TendermintTestSuite) TestCheckMisbehaviourAndUpdateState() {
 		height1         clienttypes.Height
 		consensusState2 exported.ConsensusState
 		height2         clienttypes.Height
-		misbehaviour    exported.Misbehaviour
+		misbehaviour    exported.Header
 		timestamp       time.Time
 		expPass         bool
 	}{
@@ -410,20 +411,26 @@ func (suite *TendermintTestSuite) TestCheckMisbehaviourAndUpdateState() {
 				suite.chainA.App.GetIBCKeeper().ClientKeeper.SetClientConsensusState(ctx, clientID, tc.height2, tc.consensusState2)
 			}
 
-			clientState, err := tc.clientState.CheckMisbehaviourAndUpdateState(
+			misbehaving, err := tc.clientState.CheckMisbehaviourAndUpdateState(
 				ctx,
 				suite.chainA.App.AppCodec(),
 				suite.chainA.App.GetIBCKeeper().ClientKeeper.ClientStore(ctx, clientID), // pass in clientID prefixed clientStore
 				tc.misbehaviour,
 			)
+			if misbehaving {
+				misbehaving, updateErr := tc.clientState.UpdateStateOnMisbehaviour(
+					ctx,
+					suite.chainA.App.AppCodec(),
+					suite.chainA.App.GetIBCKeeper().ClientKeeper.ClientStore(ctx, clientID), // pass in clientID prefixed clientStore
+				)
+				err = multierr.Append(err, updateErr)
+			}
 
+			suite.Require().Equal(tc.clientState.(*types.ClientState).FrozenHeight.IsZero(), misbehaving, "valid test case %d failed: %s", i, tc.name)
 			if tc.expPass {
 				suite.Require().NoError(err, "valid test case %d failed: %s", i, tc.name)
-				suite.Require().NotNil(clientState, "valid test case %d failed: %s", i, tc.name)
-				suite.Require().True(!clientState.(*types.ClientState).FrozenHeight.IsZero(), "valid test case %d failed: %s", i, tc.name)
 			} else {
 				suite.Require().Error(err, "invalid test case %d passed: %s", i, tc.name)
-				suite.Require().Nil(clientState, "invalid test case %d passed: %s", i, tc.name)
 			}
 		})
 	}

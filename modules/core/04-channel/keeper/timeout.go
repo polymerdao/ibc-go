@@ -59,8 +59,18 @@ func (k Keeper) TimeoutPacket(
 		)
 	}
 
+	clientID := connectionEnd.GetClientID()
+	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
+	if !found {
+		return sdkerrors.Wrapf(
+			connectiontypes.ErrConnectionNotFound,
+			"client (%s) not found for connection", clientID,
+		)
+	}
+
+	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
 	// check that timeout height or timeout timestamp has passed on the other end
-	proofTimestamp, err := k.connectionKeeper.GetTimestampAtHeight(ctx, connectionEnd, proofHeight)
+	proofTimestamp, err := clientState.GetTimestampAtHeight(ctx, clientStore, k.cdc, proofHeight)
 	if err != nil {
 		return err
 	}

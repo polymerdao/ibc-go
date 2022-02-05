@@ -83,23 +83,6 @@ func (k Keeper) SetConnection(ctx sdk.Context, connectionID string, connection t
 	store.Set(host.ConnectionKey(connectionID), bz)
 }
 
-// GetTimestampAtHeight returns the timestamp in nanoseconds of the consensus state at the
-// given height.
-func (k Keeper) GetTimestampAtHeight(ctx sdk.Context, connection types.ConnectionEnd, height exported.Height) (uint64, error) {
-	consensusState, found := k.clientKeeper.GetClientConsensusState(
-		ctx, connection.GetClientID(), height,
-	)
-
-	if !found {
-		return 0, sdkerrors.Wrapf(
-			clienttypes.ErrConsensusStateNotFound,
-			"clientID (%s), height (%s)", connection.GetClientID(), height,
-		)
-	}
-
-	return consensusState.GetTimestamp(), nil
-}
-
 // GetClientConnectionPaths returns all the connection paths stored under a
 // particular client
 func (k Keeper) GetClientConnectionPaths(ctx sdk.Context, clientID string) ([]string, bool) {

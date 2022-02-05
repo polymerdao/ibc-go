@@ -58,6 +58,24 @@ func (cs ClientState) GetLatestHeight() exported.Height {
 	return cs.LatestHeight
 }
 
+// GetTimestampAtHeight returns the timestamp in nanoseconds of the consensus state at the given height.
+func (cs ClientState) GetTimestampAtHeight(
+	ctx sdk.Context,
+	clientStore sdk.KVStore,
+	cdc codec.BinaryCodec,
+	height exported.Height,
+) (uint64, error) {
+	// get latest consensus state from clientStore to check for expiry
+	consState, err := GetConsensusState(clientStore, cdc, height)
+	if err != nil {
+		return 0, sdkerrors.Wrapf(
+			err,
+			"height (%s)", height,
+		)
+	}
+	return consState.GetTimestamp(), nil
+}
+
 // Status returns the status of the tendermint client.
 // The client may be:
 // - Active: FrozenHeight is zero and client is not expired
@@ -178,13 +196,17 @@ func (cs ClientState) ZeroCustomFields() exported.ClientState {
 
 // Initialize will check that initial consensus state is a Tendermint consensus state
 // and will store ProcessedTime for initial consensus state as ctx.BlockTime()
-func (cs ClientState) Initialize(ctx sdk.Context, _ codec.BinaryCodec, clientStore sdk.KVStore, consState exported.ConsensusState) error {
-	if _, ok := consState.(*ConsensusState); !ok {
+func (cs ClientState) Initialize(ctx sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore, consState exported.ConsensusState) error {
+	consensusState, ok := consState.(*ConsensusState)
+	if !ok {
 		return sdkerrors.Wrapf(clienttypes.ErrInvalidConsensus, "invalid initial consensus state. expected type: %T, got: %T",
 			&ConsensusState{}, consState)
 	}
+	height := cs.GetLatestHeight()
 	// set metadata for initial consensus state.
-	setConsensusMetadata(ctx, clientStore, cs.GetLatestHeight())
+	setConsensusMetadata(ctx, clientStore, height)
+	SetConsensusState(clientStore, cdc, consensusState, height)
+
 	return nil
 }
 

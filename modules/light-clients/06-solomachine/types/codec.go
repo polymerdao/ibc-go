@@ -26,7 +26,7 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 		&Header{},
 	)
 	registry.RegisterImplementations(
-		(*exported.Misbehaviour)(nil),
+		(*exported.Header)(nil),
 		&Misbehaviour{},
 	)
 }

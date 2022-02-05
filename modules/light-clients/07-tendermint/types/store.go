@@ -43,6 +43,11 @@ var (
 	KeyIteration = []byte("/iterationKey")
 )
 
+// SetClientState stores the client state.
+func SetClientState(clientStore sdk.KVStore, cdc codec.BinaryCodec, clientState *ClientState) {
+	clientStore.Set(host.ClientStateKey(), clienttypes.MustMarshalClientState(cdc, clientState))
+}
+
 // SetConsensusState stores the consensus state at the given height.
 func SetConsensusState(clientStore sdk.KVStore, cdc codec.BinaryCodec, consensusState *ConsensusState, height exported.Height) {
 	key := host.ConsensusStateKey(height)

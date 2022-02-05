@@ -105,14 +105,21 @@ func (cs *ClientState) CheckHeaderForMisbehaviour(
 // UpdateStateFromHeader panics!
 func (cs *ClientState) UpdateStateFromHeader(
 	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
-) (exported.ClientState, exported.ConsensusState, error) {
+) error {
 	panic("legacy solo machine is deprecated!")
 }
 
-// CheckMisbehaviourAndUpdateState panics!
-func (cs ClientState) CheckMisbehaviourAndUpdateState(
-	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Misbehaviour,
-) (exported.ClientState, error) {
+// CheckForMisbehaviour panics!
+func (cs ClientState) CheckForMisbehaviour(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, _ exported.Header,
+) (bool, error) {
+	panic("legacy solo machine is deprecated!")
+}
+
+// UpdateStateOnMisbehaviour panics!
+func (cs ClientState) UpdateStateOnMisbehaviour(
+	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore,
+) {
 	panic("legacy solo machine is deprecated!")
 }
 
@@ -128,7 +135,7 @@ func (cs ClientState) CheckSubstituteAndUpdateState(
 func (cs ClientState) VerifyUpgradeAndUpdateState(
 	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore,
 	_ exported.ClientState, _ exported.ConsensusState, _, _ []byte,
-) (exported.ClientState, exported.ConsensusState, error) {
+) error {
 	panic("legacy solo machine is deprecated!")
 }
 
@@ -198,6 +205,13 @@ func (cs ClientState) VerifyNextSequenceRecv(
 	uint64, uint64, exported.Prefix, []byte,
 	string, string, uint64,
 ) error {
+	panic("legacy solo machine is deprecated!")
+}
+
+// GetTimestampAtHeight panics!
+func (cs ClientState) GetTimestampAtHeight(
+	sdk.Context, sdk.KVStore, codec.BinaryCodec, exported.Height,
+) (uint64, error) {
 	panic("legacy solo machine is deprecated!")
 }
 

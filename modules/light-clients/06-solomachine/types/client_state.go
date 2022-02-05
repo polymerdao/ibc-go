@@ -39,6 +39,17 @@ func (cs ClientState) GetLatestHeight() exported.Height {
 	return clienttypes.NewHeight(0, cs.Sequence)
 }
 
+// GetTimestampAtHeight returns 0.
+// TODO: What's the correct return value here? Saw comment on solo machine does not support usage of `GetTimestampAtHeight`.
+func (cs ClientState) GetTimestampAtHeight(
+	_ sdk.Context,
+	_ sdk.KVStore,
+	_ codec.BinaryCodec,
+	_ exported.Height,
+) (uint64, error) {
+	return 0, nil
+}
+
 // Status returns the status of the solo machine client.
 // The client may be:
 // - Active: if frozen sequence is 0
@@ -71,11 +82,12 @@ func (cs ClientState) ZeroCustomFields() exported.ClientState {
 }
 
 // Initialize will check that initial consensus state is equal to the latest consensus state of the initial client.
-func (cs ClientState) Initialize(_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore, consState exported.ConsensusState) error {
+func (cs ClientState) Initialize(_ sdk.Context, cdc codec.BinaryCodec, clientStore sdk.KVStore, consState exported.ConsensusState) error {
 	if !reflect.DeepEqual(cs.ConsensusState, consState) {
 		return sdkerrors.Wrapf(clienttypes.ErrInvalidConsensus, "consensus state in initial client does not equal initial consensus state. expected: %s, got: %s",
 			cs.ConsensusState, consState)
 	}
+	clientStore.Set(host.ConsensusStateKey(cs.GetLatestHeight()), clienttypes.MustMarshalConsensusState(cdc, consState))
 	return nil
 }
 
@@ -88,8 +100,8 @@ func (cs ClientState) ExportMetadata(_ sdk.KVStore) []exported.GenesisMetadata {
 func (cs ClientState) VerifyUpgradeAndUpdateState(
 	_ sdk.Context, _ codec.BinaryCodec, _ sdk.KVStore,
 	_ exported.ClientState, _ exported.ConsensusState, _, _ []byte,
-) (exported.ClientState, exported.ConsensusState, error) {
-	return nil, nil, sdkerrors.Wrap(clienttypes.ErrInvalidUpgradeClient, "cannot upgrade solomachine client")
+) error {
+	return sdkerrors.Wrap(clienttypes.ErrInvalidUpgradeClient, "cannot upgrade solomachine client")
 }
 
 // VerifyClientState verifies a proof of the client state of the running chain
