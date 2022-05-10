@@ -92,6 +92,7 @@ import (
 	ibcfee "github.com/cosmos/ibc-go/v3/modules/apps/29-fee"
 	ibcfeekeeper "github.com/cosmos/ibc-go/v3/modules/apps/29-fee/keeper"
 	ibcfeetypes "github.com/cosmos/ibc-go/v3/modules/apps/29-fee/types"
+	icq "github.com/cosmos/ibc-go/v3/modules/apps/interchain-queries"
 	transfer "github.com/cosmos/ibc-go/v3/modules/apps/transfer"
 	ibctransferkeeper "github.com/cosmos/ibc-go/v3/modules/apps/transfer/keeper"
 	ibctransfertypes "github.com/cosmos/ibc-go/v3/modules/apps/transfer/types"
@@ -148,6 +149,7 @@ var (
 		transfer.AppModuleBasic{},
 		ibcmock.AppModuleBasic{},
 		ica.AppModuleBasic{},
+		icq.AppModuleBasic{},
 		authzmodule.AppModuleBasic{},
 		vesting.AppModuleBasic{},
 		ibcfee.AppModuleBasic{},
@@ -361,6 +363,14 @@ func NewSimApp(
 		app.IBCKeeper.ChannelKeeper, // may be replaced with IBC middleware
 		app.IBCKeeper.ChannelKeeper,
 		&app.IBCKeeper.PortKeeper, app.AccountKeeper, app.BankKeeper,
+	)
+
+	// ICQ Controller Keeper
+	app.ICAControllerKeeper = icacontrollerkeeper.NewKeeper(
+		appCodec, keys[icacontrollertypes.StoreKey], app.GetSubspace(icacontrollertypes.SubModuleName),
+		app.IBCKeeper.ChannelKeeper, // may be replaced with middleware such as ics29 fee
+		app.IBCKeeper.ChannelKeeper, &app.IBCKeeper.PortKeeper,
+		scopedICAControllerKeeper, app.MsgServiceRouter(),
 	)
 
 	// ICA Controller keeper
