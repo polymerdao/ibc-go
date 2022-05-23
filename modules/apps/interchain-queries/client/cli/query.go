@@ -12,28 +12,28 @@ import (
 	"github.com/spf13/cobra"
 	abci "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/host/types"
-	icatypes "github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/types"
+	"github.com/cosmos/ibc-go/v3/modules/apps/interchain-queries/types"
+	icqtypes "github.com/cosmos/ibc-go/v3/modules/apps/interchain-queries/types"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
 	host "github.com/cosmos/ibc-go/v3/modules/core/24-host"
 )
 
-// GetCmdParams returns the command handler for the host submodule parameter querying.
+// GetCmdParams returns the command handler for the submodule parameter querying.
 func GetCmdParams() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "params",
-		Short:   "Query the current interchain-accounts host submodule parameters",
-		Long:    "Query the current interchain-accounts host submodule parameters",
+		Short:   "Query the current interchain-queries submodule parameters",
+		Long:    "Query the current interchain-queries submodule parameters",
 		Args:    cobra.NoArgs,
-		Example: fmt.Sprintf("%s query interchain-accounts host params", version.AppName),
+		Example: fmt.Sprintf("%s query interchain-queries params", version.AppName),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err
 			}
-			queryClient := types.NewQueryClient(clientCtx)
+			queriesClient := types.NewQueriesClient(clientCtx)
 
-			res, err := queryClient.Params(cmd.Context(), &types.QueryParamsRequest{})
+			res, err := queriesClient.Params(cmd.Context(), &types.QueryParamsRequest{})
 			if err != nil {
 				return err
 			}
@@ -47,21 +47,21 @@ func GetCmdParams() *cobra.Command {
 	return cmd
 }
 
-// GetCmdPacketEvents returns the command handler for the host packet events querying.
+// GetCmdPacketEvents returns the command handler for the packet events querying.
 func GetCmdPacketEvents() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "packet-events [channel-id] [sequence]",
-		Short:   "Query the interchain-accounts host submodule packet events",
-		Long:    "Query the interchain-accounts host submodule packet events for a particular channel and sequence",
+		Short:   "Query the interchain-queries submodule packet events",
+		Long:    "Query the interchain-queries submodule packet events for a particular channel and sequence",
 		Args:    cobra.ExactArgs(2),
-		Example: fmt.Sprintf("%s query interchain-accounts host packet-events channel-0 100", version.AppName),
+		Example: fmt.Sprintf("%s query interchain-queries packet-events channel-0 100", version.AppName),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
 				return err
 			}
 
-			channelID, portID := args[0], icatypes.PortID
+			channelID, portID := args[0], icqtypes.PortID
 			if err := host.ChannelIdentifierValidator(channelID); err != nil {
 				return err
 			}
