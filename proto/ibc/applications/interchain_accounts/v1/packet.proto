@@ -16,6 +16,8 @@ enum Type {
   TYPE_UNSPECIFIED = 0 [(gogoproto.enumvalue_customname) = "UNSPECIFIED"];
   // Execute a transaction on an interchain accounts host chain
   TYPE_EXECUTE_TX = 1 [(gogoproto.enumvalue_customname) = "EXECUTE_TX"];
+  // Query host chain and send back the results to the controller chain
+  TYPE_QUERY = 2 [(gogoproto.enumvalue_customname) = "QUERY"];
 }
 
 // InterchainAccountPacketData is comprised of a raw transaction, type of transaction and optional memo field.

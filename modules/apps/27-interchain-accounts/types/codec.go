@@ -6,16 +6,15 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
-var (
-	// ModuleCdc references the global interchain accounts module codec. Note, the codec
-	// should ONLY be used in certain instances of tests and for JSON encoding.
-	//
-	// The actual codec used for serialization should be provided to interchain accounts and
-	// defined at the application level.
-	ModuleCdc = codec.NewProtoCodec(codectypes.NewInterfaceRegistry())
-)
+// ModuleCdc references the global interchain accounts module codec. Note, the codec
+// should ONLY be used in certain instances of tests and for JSON encoding.
+//
+// The actual codec used for serialization should be provided to interchain accounts and
+// defined at the application level.
+var ModuleCdc = codec.NewProtoCodec(codectypes.NewInterfaceRegistry())
 
 // RegisterInterfaces registers the concrete InterchainAccount implementation against the associated
 // x/auth AccountI and GenesisAccount interfaces
@@ -82,4 +81,25 @@ func DeserializeCosmosTx(cdc codec.BinaryCodec, data []byte) ([]sdk.Msg, error) 
 	}
 
 	return msgs, nil
+}
+
+func SerializeABCIQuery(cdc codec.BinaryCodec, q abci.RequestQuery) ([]byte, error) {
+	// only ProtoCodec is supported
+	if _, ok := cdc.(*codec.ProtoCodec); !ok {
+		return nil, sdkerrors.Wrap(ErrInvalidCodec, "only ProtoCodec is supported for receiving messages on the host chain")
+	}
+
+	return cdc.Marshal(&q)
+}
+
+func DeserializeABCIQuery(cdc codec.BinaryCodec, data []byte) (abci.RequestQuery, error) {
+	var q abci.RequestQuery
+
+	// only ProtoCodec is supported
+	if _, ok := cdc.(*codec.ProtoCodec); !ok {
+		return q, sdkerrors.Wrap(ErrInvalidCodec, "only ProtoCodec is supported for receiving messages on the host chain")
+	}
+
+	err := cdc.Unmarshal(data, &q)
+	return q, err
 }

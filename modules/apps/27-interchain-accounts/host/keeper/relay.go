@@ -8,6 +8,7 @@ import (
 	"github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/host/types"
 	icatypes "github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/types"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // OnRecvPacket handles a given interchain accounts packet on a destination host chain.
@@ -33,6 +34,18 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) ([]byt
 		}
 
 		return txResponse, nil
+	case icatypes.QUERY:
+		q, err := icatypes.DeserializeABCIQuery(k.cdc, data.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		qResponse, err := k.query(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+
+		return qResponse, err
 	default:
 		return nil, icatypes.ErrUnknownDataType
 	}
@@ -129,4 +142,18 @@ func (k Keeper) executeMsg(ctx sdk.Context, msg sdk.Msg) ([]byte, error) {
 	ctx.EventManager().EmitEvents(res.GetEvents())
 
 	return res.Data, nil
+}
+
+func (k Keeper) query(ctx sdk.Context, q abci.RequestQuery) ([]byte, error) {
+	querier := k.queryRouter.Route(q.Path)
+	if querier == nil {
+		return nil, icatypes.ErrInvalidRoute
+	}
+
+	res, err := querier(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Value, nil
 }

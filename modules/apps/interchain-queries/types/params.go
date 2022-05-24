@@ -15,8 +15,8 @@ const (
 var (
 	// KeyHostEnabled is the store key for HostEnabled Params
 	KeyHostEnabled = []byte("HostEnabled")
-	// KeyAllowMessages is the store key for the AllowMessages Params
-	KeyAllowMessages = []byte("AllowMessages")
+	// KeyAllowQueries is the store key for the AllowQueries Params
+	KeyAllowQueries = []byte("AllowQueries")
 )
 
 // ParamKeyTable type declaration for parameters
@@ -25,10 +25,10 @@ func ParamKeyTable() paramtypes.KeyTable {
 }
 
 // NewParams creates a new parameter configuration for the host submodule
-func NewParams(enableHost bool, allowMsgs []string) Params {
+func NewParams(enableHost bool, allowQueries []string) Params {
 	return Params{
-		HostEnabled:   enableHost,
-		AllowMessages: allowMsgs,
+		HostEnabled:  enableHost,
+		AllowQueries: allowQueries,
 	}
 }
 
@@ -43,7 +43,7 @@ func (p Params) Validate() error {
 		return err
 	}
 
-	if err := validateAllowlist(p.AllowMessages); err != nil {
+	if err := validateAllowlist(p.AllowQueries); err != nil {
 		return err
 	}
 
@@ -54,7 +54,7 @@ func (p Params) Validate() error {
 func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 	return paramtypes.ParamSetPairs{
 		paramtypes.NewParamSetPair(KeyHostEnabled, p.HostEnabled, validateEnabled),
-		paramtypes.NewParamSetPair(KeyAllowMessages, p.AllowMessages, validateAllowlist),
+		paramtypes.NewParamSetPair(KeyAllowQueries, p.AllowQueries, validateAllowlist),
 	}
 }
 
@@ -68,14 +68,14 @@ func validateEnabled(i interface{}) error {
 }
 
 func validateAllowlist(i interface{}) error {
-	allowMsgs, ok := i.([]string)
+	allowQueries, ok := i.([]string)
 	if !ok {
 		return fmt.Errorf("invalid parameter type: %T", i)
 	}
 
-	for _, typeURL := range allowMsgs {
-		if strings.TrimSpace(typeURL) == "" {
-			return fmt.Errorf("parameter must not contain empty strings: %s", allowMsgs)
+	for _, path := range allowQueries {
+		if strings.TrimSpace(path) == "" {
+			return fmt.Errorf("parameter must not contain empty strings: %s", allowQueries)
 		}
 	}
 
