@@ -5,24 +5,25 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/host/types"
-	icatypes "github.com/cosmos/ibc-go/v3/modules/apps/27-interchain-accounts/types"
+	"github.com/cosmos/ibc-go/v3/modules/apps/interchain-queries/types"
+	icqtypes "github.com/cosmos/ibc-go/v3/modules/apps/interchain-queries/types"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 // OnRecvPacket handles a given interchain accounts packet on a destination host chain.
 // If the transaction is successfully executed, the transaction response bytes will be returned.
 func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) ([]byte, error) {
-	var data icatypes.InterchainAccountPacketData
+	var data icqtypes.InterchainAccountPacketData
 
-	if err := icatypes.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
+	if err := icqtypes.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
 		// UnmarshalJSON errors are indeterminate and therefore are not wrapped and included in failed acks
-		return nil, sdkerrors.Wrapf(icatypes.ErrUnknownDataType, "cannot unmarshal ICS-27 interchain account packet data")
+		return nil, sdkerrors.Wrapf(icqtypes.ErrUnknownDataType, "cannot unmarshal ICS-27 interchain account packet data")
 	}
 
 	switch data.Type {
-	case icatypes.EXECUTE_TX:
-		msgs, err := icatypes.DeserializeCosmosTx(k.cdc, data.Data)
+	case icqtypes.EXECUTE_TX: //execute icq
+		msgs, err := icqtypes.DeserializeABCITx(k.cdc, data.Data)
 		if err != nil {
 			return nil, err
 		}
@@ -33,8 +34,20 @@ func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) ([]byt
 		}
 
 		return txResponse, nil
+	case icqtypes.QUERY: //query icq
+		q, err := icqtypes.DeserializeABCIQuery(k.cdc, data.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		qResponse, err := k.query(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+
+		return qResponse, err
 	default:
-		return nil, icatypes.ErrUnknownDataType
+		return nil, icqtypes.ErrUnknownDataType
 	}
 }
 
@@ -93,7 +106,7 @@ func (k Keeper) executeTx(ctx sdk.Context, sourcePort, destPort, destChannel str
 func (k Keeper) authenticateTx(ctx sdk.Context, msgs []sdk.Msg, connectionID, portID string) error {
 	interchainAccountAddr, found := k.GetInterchainAccountAddress(ctx, connectionID, portID)
 	if !found {
-		return sdkerrors.Wrapf(icatypes.ErrInterchainAccountNotFound, "failed to retrieve interchain account on port %s", portID)
+		return sdkerrors.Wrapf(icqtypes.ErrInterchainAccountNotFound, "failed to retrieve interchain account on port %s", portID)
 	}
 
 	allowMsgs := k.GetAllowMessages(ctx)
@@ -117,7 +130,7 @@ func (k Keeper) authenticateTx(ctx sdk.Context, msgs []sdk.Msg, connectionID, po
 func (k Keeper) executeMsg(ctx sdk.Context, msg sdk.Msg) ([]byte, error) {
 	handler := k.msgRouter.Handler(msg)
 	if handler == nil {
-		return nil, icatypes.ErrInvalidRoute
+		return nil, icqtypes.ErrInvalidRoute
 	}
 
 	res, err := handler(ctx, msg)
@@ -129,4 +142,18 @@ func (k Keeper) executeMsg(ctx sdk.Context, msg sdk.Msg) ([]byte, error) {
 	ctx.EventManager().EmitEvents(res.GetEvents())
 
 	return res.Data, nil
+}
+
+func (k Keeper) query(ctx sdk.Context, q abci.RequestQuery) ([]byte, error) {
+	querier := k.queryRouter.Route(q.Path)
+	if querier == nil {
+		return nil, icqtypes.ErrInvalidRoute
+	}
+
+	res, err := querier(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Value, nil
 }
