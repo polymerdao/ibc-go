@@ -71,7 +71,7 @@ func (msg MsgQuery) GetSigners() []sdk.AccAddress {
 	if msg.Signer == "" {
 		return signers
 	}
-	signer, err := sdk.AccAddressFromBech32(msg.Sender)
+	signer, err := sdk.AccAddressFromBech32(msg.Signer)
 	if err != nil {
 		panic(err)
 	}

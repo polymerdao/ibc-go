@@ -1511,6 +1511,7 @@ ICQ enabled chains.
 | `requests` | [tendermint.abci.RequestQuery](#tendermint.abci.RequestQuery) | repeated | query reqeusts |
 | `timeout_height` | [ibc.core.client.v1.Height](#ibc.core.client.v1.Height) |  | Timeout height relative to the current block height. The timeout is disabled when set to 0. |
 | `timeout_timestamp` | [uint64](#uint64) |  | Timeout timestamp in absolute nanoseconds since unix epoch. The timeout is disabled when set to 0. |
+| `signer` | [string](#string) |  |  |
 
 
 
