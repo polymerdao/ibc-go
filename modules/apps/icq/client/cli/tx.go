@@ -12,6 +12,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/version"
 	"github.com/spf13/cobra"
+	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/cosmos/ibc-go/v3/modules/apps/icq/types"
 	transfertypes "github.com/cosmos/ibc-go/v3/modules/apps/transfer/types"
@@ -44,7 +45,7 @@ corresponding to the counterparty channel. Any timeout set to 0 is disabled.`),
 			if err != nil {
 				return err
 			}
-			sender := clientCtx.GetFromAddress().String()
+			signer := clientCtx.GetFromAddress().String()
 			srcPort := args[0]
 			srcChannel := args[1]
 			requestData := args[2]
@@ -103,11 +104,11 @@ corresponding to the counterparty channel. Any timeout set to 0 is disabled.`),
 			}
 
 			var request abci.RequestQuery
-			if err := json.Unmarshal(requestData, request); err != nil {
+			if err := json.Unmarshal([]byte(requestData), request); err != nil {
 				return err
 			}
 			msg := types.NewMsgQuery(
-				srcPort, srcChannel, []abci.RequestQuery{request}, timeoutHeight, timeoutTimestamp,
+				srcPort, srcChannel, []abci.RequestQuery{request}, timeoutHeight, timeoutTimestamp, signer,
 			)
 			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
 		},
