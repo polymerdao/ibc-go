@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"context"
+	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -14,9 +15,10 @@ var _ types.MsgServer = Keeper{}
 func (k Keeper) Query(goCtx context.Context, msg *types.MsgQuery) (*types.MsgQueryResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	if err := k.SendQuery(
+	_, err := k.SendQuery(
 		ctx, msg.SourcePort, msg.SourceChannel, msg.Requests, msg.TimeoutHeight, msg.TimeoutTimestamp,
-	); err != nil {
+	)
+	if err != nil {
 		return nil, err
 	}
 
@@ -25,7 +27,7 @@ func (k Keeper) Query(goCtx context.Context, msg *types.MsgQuery) (*types.MsgQue
 	ctx.EventManager().EmitEvents(sdk.Events{
 		sdk.NewEvent(
 			types.EventTypeQuery,
-			sdk.NewAttribute(types.AttributeKeyNumRequests, len(msg.Requests)),
+			sdk.NewAttribute(types.AttributeKeyNumRequests, fmt.Sprintf("%d", len(msg.Requests))),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
