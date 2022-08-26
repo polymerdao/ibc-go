@@ -20,6 +20,7 @@ func NewMsgQuery(
 	sourcePort, sourceChannel string,
 	requests []abci.RequestQuery,
 	timeoutHeight clienttypes.Height, timeoutTimestamp uint64,
+	signer string,
 ) *MsgQuery {
 	return &MsgQuery{
 		SourcePort:       sourcePort,
@@ -27,6 +28,7 @@ func NewMsgQuery(
 		Requests:         requests,
 		TimeoutHeight:    timeoutHeight,
 		TimeoutTimestamp: timeoutTimestamp,
+		Signer:           signer,
 	}
 }
 
