@@ -34,6 +34,7 @@ message MsgQuery {
   // Timeout timestamp in absolute nanoseconds since unix epoch.
   // The timeout is disabled when set to 0.
   uint64 timeout_timestamp = 5 [(gogoproto.moretags) = "yaml:\"timeout_timestamp\""];
+  string signer = 6;
 }
 
 // MsgQueryResponse defines the MsgQuery response type.

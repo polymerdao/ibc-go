@@ -3,12 +3,12 @@ package keeper
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
-	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 
 	"github.com/cosmos/ibc-go/v3/modules/apps/icq/types"
 	icqtypes "github.com/cosmos/ibc-go/v3/modules/apps/icq/types"
 	clienttypes "github.com/cosmos/ibc-go/v3/modules/core/02-client/types"
 	channeltypes "github.com/cosmos/ibc-go/v3/modules/core/04-channel/types"
+	host "github.com/cosmos/ibc-go/v3/modules/core/24-host"
 	abci "github.com/tendermint/tendermint/abci/types"
 )
 
@@ -16,7 +16,6 @@ func (k Keeper) SendQuery(
 	ctx sdk.Context,
 	sourcePort,
 	sourceChannel string,
-	chanCap *capabilitytypes.Capability,
 	reqs []abci.RequestQuery,
 	timeoutHeight clienttypes.Height,
 	timeoutTimestamp uint64,
@@ -37,7 +36,7 @@ func (k Keeper) SendQuery(
 		Data: bz,
 	}
 
-	return k.createOutgoingPacket(ctx, sourcePort, sourceChannel, destinationPort, destinationChannel, chanCap, icqPacketData, timeoutTimestamp)
+	return k.createOutgoingPacket(ctx, sourcePort, sourceChannel, destinationPort, destinationChannel, icqPacketData, timeoutTimestamp)
 }
 
 func (k Keeper) createOutgoingPacket(
@@ -46,12 +45,16 @@ func (k Keeper) createOutgoingPacket(
 	sourceChannel,
 	destinationPort,
 	destinationChannel string,
-	chanCap *capabilitytypes.Capability,
 	icqPacketData types.InterchainQueryPacketData,
 	timeoutTimestamp uint64,
 ) (uint64, error) {
 	if err := icqPacketData.ValidateBasic(); err != nil {
 		return 0, sdkerrors.Wrap(err, "invalid interchain query packet data")
+	}
+
+	channelCap, ok := k.scopedKeeper.GetCapability(ctx, host.ChannelCapabilityPath(sourcePort, sourceChannel))
+	if !ok {
+		return sdkerrors.Wrap(channeltypes.ErrChannelCapabilityNotFound, "module does not own channel capability")
 	}
 
 	// get the next sequence
@@ -71,7 +74,7 @@ func (k Keeper) createOutgoingPacket(
 		timeoutTimestamp,
 	)
 
-	if err := k.ics4Wrapper.SendPacket(ctx, chanCap, packet); err != nil {
+	if err := k.ics4Wrapper.SendPacket(ctx, channelCap, packet); err != nil {
 		return 0, err
 	}
 
