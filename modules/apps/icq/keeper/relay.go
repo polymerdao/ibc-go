@@ -86,18 +86,22 @@ func (k Keeper) createOutgoingPacket(
 func (k Keeper) OnRecvPacket(ctx sdk.Context, packet channeltypes.Packet) ([]byte, error) {
 	var data icqtypes.InterchainQueryPacketData
 
+        k.Logger(ctx).Debug("OnRecvPacket")
 	if err := icqtypes.ModuleCdc.UnmarshalJSON(packet.GetData(), &data); err != nil {
 		// UnmarshalJSON errors are indeterminate and therefore are not wrapped and included in failed acks
+                k.Logger(ctx).Debug("UnmarshalJSON error", "err", err, "data", string(packet.GetData()))
 		return nil, sdkerrors.Wrapf(icqtypes.ErrUnknownDataType, "cannot unmarshal ICQ packet data")
 	}
 
 	reqs, err := types.DeserializeCosmosQuery(data.GetData())
 	if err != nil {
+                k.Logger(ctx).Debug("deserialize error", "err", err, "data", string(data.GetData()))
 		return nil, err
 	}
 
 	response, err := k.executeQuery(ctx, reqs)
 	if err != nil {
+                k.Logger(ctx).Debug("executeQuery error", "err", err)
 		return nil, err
 	}
 	return response, err
