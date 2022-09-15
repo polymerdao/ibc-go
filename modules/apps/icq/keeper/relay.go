@@ -136,7 +136,7 @@ func (k Keeper) executeQuery(ctx sdk.Context, reqs []abci.RequestQuery) ([]byte,
 	if err != nil {
 		return nil, sdkerrors.Wrap(err, "failed to marshal tx data")
 	}
-        k.Logger(ctx).Debug("executeQuery ack data", "data", string(data))
+        k.Logger(ctx).Debug("executeQuery ack data", "data", string(data), "resps", resps)
 
 	return data, nil
 }
