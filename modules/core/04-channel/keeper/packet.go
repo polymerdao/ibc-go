@@ -366,6 +366,7 @@ func (k Keeper) WriteAcknowledgement(
 		"src_channel", packet.GetSourceChannel(),
 		"dst_port", packet.GetDestPort(),
 		"dst_channel", packet.GetDestChannel(),
+                "acknowledgement", string(bz),
 	)
 
 	EmitWriteAcknowledgementEvent(ctx, packet, channel, bz)
