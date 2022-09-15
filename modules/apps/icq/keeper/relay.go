@@ -142,10 +142,10 @@ func (k Keeper) executeQuery(ctx sdk.Context, reqs []abci.RequestQuery) ([]byte,
 
 // authenticateQuery ensures the provided query request is in the whitelist.
 func (k Keeper) authenticateQuery(ctx sdk.Context, q abci.RequestQuery) error {
-	allowQueries := k.GetAllowQueries(ctx)
-	if !types.ContainsQueryPath(allowQueries, q.Path) {
-		return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "query path not allowed: %s", q.Path)
-	}
+	// allowQueries := k.GetAllowQueries(ctx)
+	// if !types.ContainsQueryPath(allowQueries, q.Path) {
+	// 	return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "query path not allowed: %s", q.Path)
+	// }
 	if !(q.Height == 0 || q.Height == ctx.BlockHeight()) {
 		return sdkerrors.Wrapf(sdkerrors.ErrUnauthorized, "query height not allowed: %d", q.Height)
 	}
