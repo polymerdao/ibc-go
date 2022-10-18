@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
 	"reflect"
 	"strings"
 
@@ -119,8 +120,8 @@ func (cs ClientState) VerifyClientState(
 	store sdk.KVStore, cdc codec.BinaryCodec,
 	_ exported.Height, _ exported.Prefix, _ string, _ []byte, clientState exported.ClientState,
 ) error {
-	path := host.KeyClientState
-	bz := store.Get([]byte(path))
+	path := host.ClientStateKey()
+	bz := store.Get(path)
 	if bz == nil {
 		return sdkerrors.Wrapf(clienttypes.ErrFailedClientStateVerification,
 			"not found for path: %s", path)
@@ -170,7 +171,7 @@ func (cs ClientState) VerifyConnectionState(
 		return err
 	}
 
-	if !reflect.DeepEqual(&prevConnection, connectionEnd) {
+	if !reflect.DeepEqual(prevConnection, connectionEnd) {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedConnectionStateVerification,
 			"connection end ≠ previous stored connection: \n%v\n≠\n%v", connectionEnd, prevConnection,
@@ -204,7 +205,7 @@ func (cs ClientState) VerifyChannelState(
 		return err
 	}
 
-	if !reflect.DeepEqual(&prevChannel, channel) {
+	if !reflect.DeepEqual(prevChannel, channel) {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedChannelStateVerification,
 			"channel end ≠ previous stored channel: \n%v\n≠\n%v", channel, prevChannel,
