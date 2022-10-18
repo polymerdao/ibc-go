@@ -7,13 +7,14 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v5/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v5/modules/core/03-connection/types"
 
-	//channeltypes "github.com/cosmos/ibc-go/v5/modules/core/04-channel/types"
+	channeltypes "github.com/cosmos/ibc-go/v5/modules/core/04-channel/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v5/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v5/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v5/modules/core/exported"
 	ibctmtypes "github.com/cosmos/ibc-go/v5/modules/light-clients/07-tendermint/types"
 	"github.com/cosmos/ibc-go/v5/modules/light-clients/09-localhost/types"
 	ibctesting "github.com/cosmos/ibc-go/v5/testing"
+	ibcmock "github.com/cosmos/ibc-go/v5/testing/mock"
 )
 
 const (
@@ -192,39 +193,201 @@ func (suite *LocalhostTestSuite) TestProposedHeaderAndUpdateState() {
 }
 
 func (suite *LocalhostTestSuite) TestVerifyConnectionState() {
+	var (
+		path   *ibctesting.Path
+		connID string
+		conn   connectiontypes.ConnectionEnd
+	)
 
 	testCases := []struct {
-		name                   string
-		clientState            *types.ClientState
-		getTestConnectionAndID func(*ibctesting.Path) (string, connectiontypes.ConnectionEnd)
-		expPass                bool
+		name     string
+		malleate func()
+		expPass  bool
 	}{
 		{
-			name:        "proof verification success",
-			clientState: types.NewClientState("chainID", clientHeight),
-			getTestConnectionAndID: func(path *ibctesting.Path) (string, connectiontypes.ConnectionEnd) {
-				conn := path.EndpointB.GetConnection()
-				return path.EndpointB.ConnectionID, conn
+			name: "proof verification success",
+			malleate: func() {
+				conn = path.EndpointB.GetConnection()
+				connID = path.EndpointB.ConnectionID
 			},
 			expPass: true,
 		},
 		{
-			name:        "proof verification failed: connection not stored",
-			clientState: types.NewClientState("chainID", clientHeight),
-			getTestConnectionAndID: func(path *ibctesting.Path) (string, connectiontypes.ConnectionEnd) {
-				counterparty := connectiontypes.NewCounterparty("clientB", testConnectionID, commitmenttypes.NewMerklePrefix([]byte("ibc")))
-				conn := connectiontypes.NewConnectionEnd(connectiontypes.OPEN, "clientA", counterparty, []*connectiontypes.Version{connectiontypes.NewVersion("2", nil)}, 0)
-				return path.EndpointB.ConnectionID, conn
+			name: "proof verification failed: connection not stored",
+			malleate: func() {
+				connID = testConnectionID
 			},
 			expPass: false,
 		},
 		{
-			name:        "proof verification failed: different connection stored",
-			clientState: types.NewClientState("chainID", clientHeight),
-			getTestConnectionAndID: func(path *ibctesting.Path) (string, connectiontypes.ConnectionEnd) {
+			name: "proof verification failed: unmarshal failed",
+			malleate: func() {
+				connID = testConnectionID
+				store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
+				store.Set(host.ConnectionKey(connID), []byte("connection"))
+			},
+			expPass: false,
+		},
+		{
+			name: "proof verification failed: different connection stored",
+			malleate: func() {
 				counterparty := connectiontypes.NewCounterparty(path.EndpointB.ClientID, path.EndpointB.ConnectionID, commitmenttypes.NewMerklePrefix([]byte("ibc")))
-				conn := connectiontypes.NewConnectionEnd(connectiontypes.OPEN, path.EndpointA.ClientID, counterparty, []*connectiontypes.Version{connectiontypes.NewVersion("2", nil)}, 0)
-				return conn.Counterparty.ConnectionId, conn
+				conn = connectiontypes.NewConnectionEnd(connectiontypes.OPEN, path.EndpointA.ClientID, counterparty, []*connectiontypes.Version{connectiontypes.NewVersion("2", nil)}, 0)
+				connID = conn.Counterparty.ConnectionId
+			},
+			expPass: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+			path = ibctesting.NewLocalPath(suite.chain)
+			suite.coordinator.Setup(path)
+			tc.malleate()
+
+			clientStateI := suite.chain.GetClientState(path.EndpointA.ClientID)
+			clientState, ok := clientStateI.(*types.ClientState)
+			suite.Require().True(ok)
+
+			store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
+			err := clientState.VerifyConnectionState(
+				store, suite.chain.Codec, clientHeight, nil, []byte{}, connID, conn,
+			)
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+			} else {
+				suite.Require().Error(err)
+			}
+		})
+	}
+}
+
+func (suite *LocalhostTestSuite) TestVerifyChannelState() {
+
+	var (
+		path      *ibctesting.Path
+		channelID string
+		portID    string
+		channel   channeltypes.Channel
+	)
+	testCases := []struct {
+		name     string
+		malleate func()
+		expPass  bool
+	}{
+		{
+			name: "proof verification success",
+			malleate: func() {
+				channelB := path.EndpointB.GetChannel()
+				channelID = channelB.Counterparty.ChannelId
+				portID = channelB.Counterparty.PortId
+				channel = path.EndpointA.GetChannel()
+			},
+			expPass: true,
+		},
+		{
+			name: "proof verification failed: channel not stored",
+			malleate: func() {
+				channelID = testChannelID
+				portID = testPortID
+			},
+			expPass: false,
+		},
+		{
+			name: "proof verification failed: unmarshal failed",
+			malleate: func() {
+				channelID = testChannelID
+				portID = testPortID
+				store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
+				store.Set(host.ChannelKey(testPortID, testChannelID), []byte("channel"))
+			},
+			expPass: false,
+		},
+		{
+			name: "proof verification failed: different channel stored",
+			malleate: func() {
+				activeChannel := path.EndpointB.GetChannel()
+				channelID = activeChannel.Counterparty.ChannelId
+				portID = activeChannel.Counterparty.PortId
+
+				counterparty := channeltypes.NewCounterparty(testPortID, testChannelID)
+				channel = channeltypes.NewChannel(channeltypes.OPEN, channeltypes.ORDERED, counterparty, []string{testConnectionID}, "1.0.0")
+			},
+			expPass: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+			path = ibctesting.NewLocalPath(suite.chain)
+			suite.coordinator.Setup(path)
+			tc.malleate()
+
+			clientStateI := suite.chain.GetClientState(path.EndpointA.ClientID)
+			clientState, ok := clientStateI.(*types.ClientState)
+			suite.Require().True(ok)
+
+			store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
+			err := clientState.VerifyChannelState(
+				store, suite.chain.Codec, clientHeight, nil, []byte{}, portID, channelID, channel,
+			)
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+			} else {
+				suite.Require().Error(err)
+			}
+		})
+	}
+}
+
+func (suite *LocalhostTestSuite) TestVerifyPacketCommitment() {
+	var (
+		packet     channeltypes.Packet
+		portID     string
+		channelID  string
+		sequence   uint64
+		commitment []byte
+	)
+
+	testCases := []struct {
+		name     string
+		malleate func()
+		expPass  bool
+	}{
+		{
+			name: "proof verification success",
+			malleate: func() {
+				portID = packet.GetSourcePort()
+				channelID = packet.GetSourceChannel()
+				sequence = packet.GetSequence()
+				commitment = channeltypes.CommitPacket(suite.chain.Codec, packet)
+			},
+			expPass: true,
+		},
+		{
+			name: "proof verification failed: different commitment stored",
+			malleate: func() {
+				portID = packet.GetSourcePort()
+				channelID = packet.GetSourceChannel()
+				sequence = packet.GetSequence()
+				commitment = []byte("commitment")
+			},
+			expPass: false,
+		},
+		{
+			name: "proof verification failed: no commitment stored",
+			malleate: func() {
+				portID = testPortID
+				channelID = testChannelID
+				sequence = testSequence
 			},
 			expPass: false,
 		},
@@ -238,10 +401,21 @@ func (suite *LocalhostTestSuite) TestVerifyConnectionState() {
 			path := ibctesting.NewLocalPath(suite.chain)
 			suite.coordinator.Setup(path)
 
-			connID, conn := tc.getTestConnectionAndID(path)
-			store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
-			err := tc.clientState.VerifyConnectionState(
-				store, suite.chain.Codec, clientHeight, nil, []byte{}, connID, conn,
+			// send packet
+			packet = channeltypes.NewPacket(ibctesting.MockPacketData, 1, path.EndpointB.ChannelConfig.PortID, path.EndpointB.ChannelID, path.EndpointA.ChannelConfig.PortID, path.EndpointA.ChannelID, clienttypes.NewHeight(0, 100), 0)
+			err := path.EndpointB.SendPacket(packet)
+			suite.Require().NoError(err)
+
+			tc.malleate()
+
+			clientStateI := suite.chain.GetClientState(path.EndpointA.ClientID)
+			clientState, ok := clientStateI.(*types.ClientState)
+			suite.Require().True(ok)
+
+			ctx := suite.chain.GetContext()
+			store := ctx.KVStore(suite.chain.App.GetKey(host.StoreKey))
+			err = clientState.VerifyPacketCommitment(
+				ctx, store, suite.chain.Codec, clientHeight, 0, 0, nil, []byte{}, portID, channelID, sequence, commitment,
 			)
 
 			if tc.expPass {
@@ -253,196 +427,89 @@ func (suite *LocalhostTestSuite) TestVerifyConnectionState() {
 	}
 }
 
-//func (suite *LocalhostTestSuite) TestVerifyChannelState() {
-//	counterparty := channeltypes.NewCounterparty(testPortID, testChannelID)
-//	ch1 := channeltypes.NewChannel(channeltypes.OPEN, channeltypes.ORDERED, counterparty, []string{testConnectionID}, "1.0.0")
-//	ch2 := channeltypes.NewChannel(channeltypes.OPEN, channeltypes.ORDERED, counterparty, []string{testConnectionID}, "2.0.0")
-//
-//	testCases := []struct {
-//		name        string
-//		clientState *types.ClientState
-//		malleate    func()
-//		channel     channeltypes.Channel
-//		expPass     bool
-//	}{
-//		{
-//			name:        "proof verification success",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				bz, err := suite.cdc.Marshal(&ch1)
-//				suite.Require().NoError(err)
-//				suite.store.Set(host.ChannelKey(testPortID, testChannelID), bz)
-//			},
-//			channel: ch1,
-//			expPass: true,
-//		},
-//		{
-//			name:        "proof verification failed: channel not stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate:    func() {},
-//			channel:     ch1,
-//			expPass:     false,
-//		},
-//		{
-//			name:        "proof verification failed: unmarshal failed",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(host.ChannelKey(testPortID, testChannelID), []byte("channel"))
-//			},
-//			channel: ch1,
-//			expPass: false,
-//		},
-//		{
-//			name:        "proof verification failed: different channel stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				bz, err := suite.cdc.Marshal(&ch2)
-//				suite.Require().NoError(err)
-//				suite.store.Set(host.ChannelKey(testPortID, testChannelID), bz)
-//			},
-//			channel: ch1,
-//			expPass: false,
-//		},
-//	}
-//
-//	for _, tc := range testCases {
-//		tc := tc
-//
-//		suite.Run(tc.name, func() {
-//			suite.SetupTest()
-//			tc.malleate()
-//
-//			err := tc.clientState.VerifyChannelState(
-//				suite.store, suite.cdc, clientHeight, nil, []byte{}, testPortID, testChannelID, &tc.channel,
-//			)
-//
-//			if tc.expPass {
-//				suite.Require().NoError(err)
-//			} else {
-//				suite.Require().Error(err)
-//			}
-//		})
-//	}
-//}
-//
-//func (suite *LocalhostTestSuite) TestVerifyPacketCommitment() {
-//	testCases := []struct {
-//		name        string
-//		clientState *types.ClientState
-//		malleate    func()
-//		commitment  []byte
-//		expPass     bool
-//	}{
-//		{
-//			name:        "proof verification success",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(
-//					host.PacketCommitmentKey(testPortID, testChannelID, testSequence), []byte("commitment"),
-//				)
-//			},
-//			commitment: []byte("commitment"),
-//			expPass:    true,
-//		},
-//		{
-//			name:        "proof verification failed: different commitment stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(
-//					host.PacketCommitmentKey(testPortID, testChannelID, testSequence), []byte("different"),
-//				)
-//			},
-//			commitment: []byte("commitment"),
-//			expPass:    false,
-//		},
-//		{
-//			name:        "proof verification failed: no commitment stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate:    func() {},
-//			commitment:  []byte{},
-//			expPass:     false,
-//		},
-//	}
-//
-//	for _, tc := range testCases {
-//		tc := tc
-//
-//		suite.Run(tc.name, func() {
-//			suite.SetupTest()
-//			tc.malleate()
-//
-//			err := tc.clientState.VerifyPacketCommitment(
-//				suite.ctx, suite.store, suite.cdc, clientHeight, 0, 0, nil, []byte{}, testPortID, testChannelID, testSequence, tc.commitment,
-//			)
-//
-//			if tc.expPass {
-//				suite.Require().NoError(err)
-//			} else {
-//				suite.Require().Error(err)
-//			}
-//		})
-//	}
-//}
-//
-//func (suite *LocalhostTestSuite) TestVerifyPacketAcknowledgement() {
-//	testCases := []struct {
-//		name        string
-//		clientState *types.ClientState
-//		malleate    func()
-//		ack         []byte
-//		expPass     bool
-//	}{
-//		{
-//			name:        "proof verification success",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(
-//					host.PacketAcknowledgementKey(testPortID, testChannelID, testSequence), []byte("acknowledgement"),
-//				)
-//			},
-//			ack:     []byte("acknowledgement"),
-//			expPass: true,
-//		},
-//		{
-//			name:        "proof verification failed: different ack stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(
-//					host.PacketAcknowledgementKey(testPortID, testChannelID, testSequence), []byte("different"),
-//				)
-//			},
-//			ack:     []byte("acknowledgement"),
-//			expPass: false,
-//		},
-//		{
-//			name:        "proof verification failed: no commitment stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate:    func() {},
-//			ack:         []byte{},
-//			expPass:     false,
-//		},
-//	}
-//
-//	for _, tc := range testCases {
-//		tc := tc
-//
-//		suite.Run(tc.name, func() {
-//			suite.SetupTest()
-//			tc.malleate()
-//
-//			err := tc.clientState.VerifyPacketAcknowledgement(
-//				suite.ctx, suite.store, suite.cdc, clientHeight, 0, 0, nil, []byte{}, testPortID, testChannelID, testSequence, tc.ack,
-//			)
-//
-//			if tc.expPass {
-//				suite.Require().NoError(err)
-//			} else {
-//				suite.Require().Error(err)
-//			}
-//		})
-//	}
-//}
-//
+func (suite *LocalhostTestSuite) TestVerifyPacketAcknowledgement() {
+	var (
+		packet    channeltypes.Packet
+		portID    string
+		channelID string
+		sequence  uint64
+		ack       []byte
+	)
+
+	testCases := []struct {
+		name     string
+		malleate func()
+		expPass  bool
+	}{
+		{
+			name: "proof verification success",
+			malleate: func() {
+				portID = packet.GetDestPort()
+				channelID = packet.GetDestChannel()
+				sequence = packet.GetSequence()
+				ack = ibcmock.MockAcknowledgement.Acknowledgement()
+			},
+			expPass: true,
+		},
+		{
+			name: "proof verification failed: different ack stored",
+			malleate: func() {
+				portID = packet.GetDestPort()
+				channelID = packet.GetDestChannel()
+				sequence = packet.GetSequence()
+				ack = channeltypes.NewResultAcknowledgement([]byte("different acknowledgement")).Acknowledgement()
+			},
+			expPass: false,
+		},
+		{
+			name: "proof verification failed: no ack stored",
+			malleate: func() {
+				portID = testPortID
+				channelID = testChannelID
+				sequence = testSequence
+			},
+			expPass: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+			path := ibctesting.NewLocalPath(suite.chain)
+			suite.coordinator.Setup(path)
+
+			// send packet
+			packet = channeltypes.NewPacket(ibctesting.MockPacketData, 1, path.EndpointA.ChannelConfig.PortID, path.EndpointA.ChannelID, path.EndpointB.ChannelConfig.PortID, path.EndpointB.ChannelID, clienttypes.NewHeight(0, 100), 0)
+			err := path.EndpointA.SendPacket(packet)
+			suite.Require().NoError(err)
+
+			// write receipt and ack
+			err = path.EndpointB.RecvPacket(packet)
+			suite.Require().NoError(err)
+
+			tc.malleate()
+
+			clientStateI := suite.chain.GetClientState(path.EndpointA.ClientID)
+			clientState, ok := clientStateI.(*types.ClientState)
+			suite.Require().True(ok)
+
+			ctx := suite.chain.GetContext()
+			store := ctx.KVStore(suite.chain.App.GetKey(host.StoreKey))
+			err = clientState.VerifyPacketAcknowledgement(
+				ctx, store, suite.chain.Codec, clientHeight, 0, 0, nil, []byte{}, portID, channelID, sequence, ack,
+			)
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+			} else {
+				suite.Require().Error(err)
+			}
+		})
+	}
+}
+
 //func (suite *LocalhostTestSuite) TestVerifyPacketReceiptAbsence() {
 //	clientState := types.NewClientState("chainID", clientHeight)
 //

@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/binary"
-	"log"
 	"reflect"
 	"strings"
 
@@ -187,7 +186,7 @@ func (cs ClientState) VerifyChannelState(
 	store sdk.KVStore,
 	cdc codec.BinaryCodec,
 	_ exported.Height,
-	prefix exported.Prefix,
+	_ exported.Prefix,
 	_ []byte,
 	portID,
 	channelID string,
@@ -271,10 +270,11 @@ func (cs ClientState) VerifyPacketAcknowledgement(
 		return sdkerrors.Wrapf(clienttypes.ErrFailedPacketAckVerification, "not found for path %s", path)
 	}
 
-	if !bytes.Equal(data, acknowledgement) {
+	commit := channeltypes.CommitAcknowledgement(acknowledgement)
+	if !bytes.Equal(data, commit) {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedPacketAckVerification,
-			"ak bytes ≠ previous ack: \n%X\n≠\n%X", acknowledgement, data,
+			"ack bytes ≠ previous ack: \n%X\n≠\n%X", acknowledgement, data,
 		)
 	}
 
