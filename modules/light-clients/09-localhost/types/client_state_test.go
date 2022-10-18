@@ -98,7 +98,7 @@ func (suite *LocalhostTestSuite) TestInitialize() {
 }
 
 func (suite *LocalhostTestSuite) TestVerifyClientState() {
-	clientState := types.NewClientState("chainID", clientHeight)
+	clientState := types.NewClientState("chainID", clienttypes.Height{})
 	invalidClient := types.NewClientState("chainID", clienttypes.NewHeight(0, 12))
 	testCases := []struct {
 		name         string
@@ -159,7 +159,7 @@ func (suite *LocalhostTestSuite) TestVerifyClientState() {
 }
 
 func (suite *LocalhostTestSuite) TestVerifyClientConsensusState() {
-	clientState := types.NewClientState("chainID", clientHeight)
+	clientState := types.NewClientState("chainID", clienttypes.Height{})
 	err := clientState.VerifyClientConsensusState(
 		nil, nil, nil, "", nil, nil, nil, nil,
 	)
@@ -168,7 +168,7 @@ func (suite *LocalhostTestSuite) TestVerifyClientConsensusState() {
 
 func (suite *LocalhostTestSuite) TestCheckHeaderAndUpdateState() {
 	ctx := suite.chain.GetContext()
-	clientState := types.NewClientState("chainID", clientHeight)
+	clientState := types.NewClientState("chainID", clienttypes.Height{})
 	cs, _, err := clientState.CheckHeaderAndUpdateState(ctx, nil, nil, nil)
 	suite.Require().NoError(err)
 	suite.Require().Equal(uint64(0), cs.GetLatestHeight().GetRevisionNumber())
@@ -178,7 +178,7 @@ func (suite *LocalhostTestSuite) TestCheckHeaderAndUpdateState() {
 
 func (suite *LocalhostTestSuite) TestMisbehaviourAndUpdateState() {
 	ctx := suite.chain.GetContext()
-	clientState := types.NewClientState("chainID", clientHeight)
+	clientState := types.NewClientState("chainID", clienttypes.Height{})
 	cs, err := clientState.CheckMisbehaviourAndUpdateState(ctx, nil, nil, nil)
 	suite.Require().Error(err)
 	suite.Require().Nil(cs)
@@ -186,7 +186,7 @@ func (suite *LocalhostTestSuite) TestMisbehaviourAndUpdateState() {
 
 func (suite *LocalhostTestSuite) TestProposedHeaderAndUpdateState() {
 	ctx := suite.chain.GetContext()
-	clientState := types.NewClientState("chainID", clientHeight)
+	clientState := types.NewClientState("chainID", clienttypes.Height{})
 	cs, err := clientState.CheckSubstituteAndUpdateState(ctx, nil, nil, nil, nil)
 	suite.Require().Error(err)
 	suite.Require().Nil(cs)
@@ -254,7 +254,7 @@ func (suite *LocalhostTestSuite) TestVerifyConnectionState() {
 
 			store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
 			err := clientState.VerifyConnectionState(
-				store, suite.chain.Codec, clientHeight, nil, []byte{}, connID, conn,
+				store, suite.chain.Codec, clienttypes.Height{}, nil, []byte{}, connID, conn,
 			)
 
 			if tc.expPass {
@@ -336,7 +336,7 @@ func (suite *LocalhostTestSuite) TestVerifyChannelState() {
 
 			store := suite.chain.GetContext().KVStore(suite.chain.App.GetKey(host.StoreKey))
 			err := clientState.VerifyChannelState(
-				store, suite.chain.Codec, clientHeight, nil, []byte{}, portID, channelID, channel,
+				store, suite.chain.Codec, clienttypes.Height{}, nil, []byte{}, portID, channelID, channel,
 			)
 
 			if tc.expPass {
@@ -415,7 +415,7 @@ func (suite *LocalhostTestSuite) TestVerifyPacketCommitment() {
 			ctx := suite.chain.GetContext()
 			store := ctx.KVStore(suite.chain.App.GetKey(host.StoreKey))
 			err = clientState.VerifyPacketCommitment(
-				ctx, store, suite.chain.Codec, clientHeight, 0, 0, nil, []byte{}, portID, channelID, sequence, commitment,
+				ctx, store, suite.chain.Codec, clienttypes.Height{}, 0, 0, nil, []byte{}, portID, channelID, sequence, commitment,
 			)
 
 			if tc.expPass {
@@ -498,7 +498,7 @@ func (suite *LocalhostTestSuite) TestVerifyPacketAcknowledgement() {
 			ctx := suite.chain.GetContext()
 			store := ctx.KVStore(suite.chain.App.GetKey(host.StoreKey))
 			err = clientState.VerifyPacketAcknowledgement(
-				ctx, store, suite.chain.Codec, clientHeight, 0, 0, nil, []byte{}, portID, channelID, sequence, ack,
+				ctx, store, suite.chain.Codec, clienttypes.Height{}, 0, 0, nil, []byte{}, portID, channelID, sequence, ack,
 			)
 
 			if tc.expPass {
@@ -510,82 +510,125 @@ func (suite *LocalhostTestSuite) TestVerifyPacketAcknowledgement() {
 	}
 }
 
-//func (suite *LocalhostTestSuite) TestVerifyPacketReceiptAbsence() {
-//	clientState := types.NewClientState("chainID", clientHeight)
-//
-//	err := clientState.VerifyPacketReceiptAbsence(
-//		suite.ctx, suite.store, suite.cdc, clientHeight, 0, 0, nil, nil, testPortID, testChannelID, testSequence,
-//	)
-//
-//	suite.Require().NoError(err, "receipt absence failed")
-//
-//	suite.store.Set(host.PacketReceiptKey(testPortID, testChannelID, testSequence), []byte("receipt"))
-//
-//	err = clientState.VerifyPacketReceiptAbsence(
-//		suite.ctx, suite.store, suite.cdc, clientHeight, 0, 0, nil, nil, testPortID, testChannelID, testSequence,
-//	)
-//	suite.Require().Error(err, "receipt exists in store")
-//}
-//
-//func (suite *LocalhostTestSuite) TestVerifyNextSeqRecv() {
-//	nextSeqRecv := uint64(5)
-//
-//	testCases := []struct {
-//		name        string
-//		clientState *types.ClientState
-//		malleate    func()
-//		nextSeqRecv uint64
-//		expPass     bool
-//	}{
-//		{
-//			name:        "proof verification success",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(
-//					host.NextSequenceRecvKey(testPortID, testChannelID),
-//					sdk.Uint64ToBigEndian(nextSeqRecv),
-//				)
-//			},
-//			nextSeqRecv: nextSeqRecv,
-//			expPass:     true,
-//		},
-//		{
-//			name:        "proof verification failed: different nextSeqRecv stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate: func() {
-//				suite.store.Set(
-//					host.NextSequenceRecvKey(testPortID, testChannelID),
-//					sdk.Uint64ToBigEndian(3),
-//				)
-//			},
-//			nextSeqRecv: nextSeqRecv,
-//			expPass:     false,
-//		},
-//		{
-//			name:        "proof verification failed: no nextSeqRecv stored",
-//			clientState: types.NewClientState("chainID", clientHeight),
-//			malleate:    func() {},
-//			nextSeqRecv: nextSeqRecv,
-//			expPass:     false,
-//		},
-//	}
-//
-//	for _, tc := range testCases {
-//		tc := tc
-//
-//		suite.Run(tc.name, func() {
-//			suite.SetupTest()
-//			tc.malleate()
-//
-//			err := tc.clientState.VerifyNextSequenceRecv(
-//				suite.ctx, suite.store, suite.cdc, clientHeight, 0, 0, nil, []byte{}, testPortID, testChannelID, nextSeqRecv,
-//			)
-//
-//			if tc.expPass {
-//				suite.Require().NoError(err)
-//			} else {
-//				suite.Require().Error(err)
-//			}
-//		})
-//	}
-//}
+func (suite *LocalhostTestSuite) TestVerifyPacketReceiptAbsence() {
+	suite.SetupTest()
+	path := ibctesting.NewLocalPath(suite.chain)
+	suite.coordinator.Setup(path)
+
+	// send packet
+	packet := channeltypes.NewPacket(ibctesting.MockPacketData, 1, path.EndpointA.ChannelConfig.PortID, path.EndpointA.ChannelID, path.EndpointB.ChannelConfig.PortID, path.EndpointB.ChannelID, clienttypes.NewHeight(0, 100), 0)
+	err := path.EndpointA.SendPacket(packet)
+	suite.Require().NoError(err)
+
+	clientStateI := suite.chain.GetClientState(path.EndpointA.ClientID)
+	clientState, ok := clientStateI.(*types.ClientState)
+	suite.Require().True(ok)
+
+	ctx := suite.chain.GetContext()
+	store := ctx.KVStore(suite.chain.App.GetKey(host.StoreKey))
+	portID := packet.GetDestPort()
+	channelID := packet.GetDestChannel()
+	sequence := packet.GetSequence()
+	err = clientState.VerifyPacketReceiptAbsence(
+		ctx, store, suite.chain.Codec, clienttypes.Height{}, 0, 0, nil, nil, portID, channelID, sequence,
+	)
+	suite.Require().NoError(err, "receipt absence failed")
+
+	// write receipt and ack
+	err = path.EndpointB.RecvPacket(packet)
+	suite.Require().NoError(err)
+
+	err = clientState.VerifyPacketReceiptAbsence(
+		ctx, store, suite.chain.Codec, clienttypes.Height{}, 0, 0, nil, nil, portID, channelID, sequence,
+	)
+	suite.Require().Error(err, "receipt exists in store")
+}
+
+func (suite *LocalhostTestSuite) TestVerifyNextSeqRecv() {
+	var (
+		path         *ibctesting.Path
+		packet       channeltypes.Packet
+		portID       string
+		channelID    string
+		nextSequence uint64
+	)
+
+	testCases := []struct {
+		name     string
+		malleate func()
+		expPass  bool
+	}{
+		{
+			name: "proof verification success",
+			malleate: func() {
+				// send packet
+				packet = channeltypes.NewPacket(ibctesting.MockPacketData, 1, path.EndpointA.ChannelConfig.PortID, path.EndpointA.ChannelID, path.EndpointB.ChannelConfig.PortID, path.EndpointB.ChannelID, clienttypes.NewHeight(0, 100), 0)
+				err := path.EndpointA.SendPacket(packet)
+				suite.Require().NoError(err)
+
+				// write receipt and ack
+				err = path.EndpointB.RecvPacket(packet)
+				suite.Require().NoError(err)
+
+				portID = packet.GetDestPort()
+				channelID = packet.GetDestChannel()
+				nextSequence = packet.GetSequence() + 1
+			},
+			expPass: true,
+		},
+		{
+			name: "proof verification failed: different nextSequence stored",
+			malleate: func() {
+				// send packet
+				packet = channeltypes.NewPacket(ibctesting.MockPacketData, 1, path.EndpointA.ChannelConfig.PortID, path.EndpointA.ChannelID, path.EndpointB.ChannelConfig.PortID, path.EndpointB.ChannelID, clienttypes.NewHeight(0, 100), 0)
+				err := path.EndpointA.SendPacket(packet)
+				suite.Require().NoError(err)
+
+				// write receipt and ack
+				err = path.EndpointB.RecvPacket(packet)
+				suite.Require().NoError(err)
+
+				portID = packet.GetDestPort()
+				channelID = packet.GetDestChannel()
+				nextSequence = packet.GetSequence()
+			},
+			expPass: false,
+		},
+		{
+			name: "proof verification failed: no nextSequence stored",
+			malleate: func() {
+				portID = testPortID
+				channelID = testChannelID
+			},
+			expPass: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+			path = ibctesting.NewLocalPath(suite.chain)
+			suite.coordinator.Setup(path)
+
+			tc.malleate()
+
+			clientStateI := suite.chain.GetClientState(path.EndpointA.ClientID)
+			clientState, ok := clientStateI.(*types.ClientState)
+			suite.Require().True(ok)
+
+			ctx := suite.chain.GetContext()
+			store := ctx.KVStore(suite.chain.App.GetKey(host.StoreKey))
+			err := clientState.VerifyNextSequenceRecv(
+				ctx, store, suite.chain.Codec, clienttypes.Height{}, 0, 0, nil, nil, portID, channelID, nextSequence,
+			)
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+			} else {
+				suite.Require().Error(err)
+			}
+		})
+	}
+}

@@ -330,7 +330,7 @@ func (cs ClientState) VerifyNextSequenceRecv(
 	}
 
 	prevSequenceRecv := binary.BigEndian.Uint64(data)
-	if prevSequenceRecv != nextSequenceRecv {
+	if prevSequenceRecv+1 != nextSequenceRecv {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedNextSeqRecvVerification,
 			"next sequence receive ≠ previous stored sequence (%d ≠ %d)", nextSequenceRecv, prevSequenceRecv,

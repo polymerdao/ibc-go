@@ -5,12 +5,7 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	clienttypes "github.com/cosmos/ibc-go/v5/modules/core/02-client/types"
 	ibctesting "github.com/cosmos/ibc-go/v5/testing"
-)
-
-var (
-	clientHeight = clienttypes.NewHeight(0, 4)
 )
 
 type LocalhostTestSuite struct {
