@@ -23,16 +23,16 @@ func (k Keeper) VerifyClientState(
 	clientID := connection.GetClientID()
 	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
 
-	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
+	targetClient, found := k.clientKeeper.GetClientState(ctx, clientID)
 	if !found {
 		return sdkerrors.Wrap(clienttypes.ErrClientNotFound, clientID)
 	}
 
-	if status := clientState.Status(ctx, clientStore, k.cdc); status != exported.Active {
+	if status := targetClient.Status(ctx, clientStore, k.cdc); status != exported.Active {
 		return sdkerrors.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
 	}
 
-	if err := clientState.VerifyClientState(
+	if err := targetClient.VerifyClientState(
 		clientStore, k.cdc, height,
 		connection.GetCounterparty().GetPrefix(), connection.GetCounterparty().GetClientID(), proof, clientState); err != nil {
 		return sdkerrors.Wrapf(err, "failed client state verification for target client: %s", clientID)
