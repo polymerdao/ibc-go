@@ -178,11 +178,6 @@ func (suite *KeeperTestSuite) TestValidateSelfClient() {
 			true,
 		},
 		{
-			"invalid client type",
-			localhosttypes.NewClientState(suite.chainA.ChainID, testClientHeight),
-			false,
-		},
-		{
 			"frozen client",
 			&ibctmtypes.ClientState{ChainId: suite.chainA.ChainID, TrustLevel: ibctmtypes.DefaultTrustLevel, TrustingPeriod: trustingPeriod, UnbondingPeriod: ubdPeriod, MaxClockDrift: maxClockDrift, FrozenHeight: testClientHeight, LatestHeight: testClientHeight, ProofSpecs: commitmenttypes.GetSDKSpecs(), UpgradePath: ibctesting.UpgradePath, AllowUpdateAfterExpiry: false, AllowUpdateAfterMisbehaviour: false},
 			false,
