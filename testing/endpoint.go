@@ -13,7 +13,6 @@ import (
 	host "github.com/cosmos/ibc-go/v5/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v5/modules/core/exported"
 	ibctmtypes "github.com/cosmos/ibc-go/v5/modules/light-clients/07-tendermint/types"
-	localhosttypes "github.com/cosmos/ibc-go/v5/modules/light-clients/09-localhost/types"
 )
 
 // Endpoint is a which represents a channel endpoint and its associated
@@ -83,7 +82,7 @@ func (endpoint *Endpoint) QueryProofAtHeight(key []byte, height uint64) ([]byte,
 	if endpoint.ClientConfig.GetClientType() == exported.Localhost {
 		revision := clienttypes.ParseChainID(endpoint.Chain.ChainID)
 		// Return an empty invalid proof to pass validation logic (proof is unused by localhost client).
-		return []byte("empty"), clienttypes.NewHeight(revision, uint64(height))
+		return []byte("empty"), clienttypes.NewHeight(revision, height)
 	}
 	// query proof on the counterparty using the latest height of the IBC client
 	return endpoint.Chain.QueryProofAtHeight(key, int64(height))
@@ -117,12 +116,6 @@ func (endpoint *Endpoint) CreateClient() (err error) {
 		//		solo := NewSolomachine(endpoint.Chain.T, endpoint.Chain.Codec, clientID, "", 1)
 		//		clientState = solo.ClientState()
 		//		consensusState = solo.ConsensusState()
-	case exported.Localhost:
-		_, ok := endpoint.ClientConfig.(*LocalhostConfig)
-		require.True(endpoint.Chain.T, ok)
-
-		height := endpoint.Counterparty.Chain.LastHeader.GetHeight().(clienttypes.Height)
-		clientState = localhosttypes.NewClientState(endpoint.Counterparty.Chain.ChainID, height)
 	default:
 		err = fmt.Errorf("client type %s is not supported", endpoint.ClientConfig.GetClientType())
 	}
