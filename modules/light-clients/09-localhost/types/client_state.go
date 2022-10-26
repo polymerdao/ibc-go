@@ -119,8 +119,8 @@ func (cs ClientState) VerifyClientState(
 	store sdk.KVStore, cdc codec.BinaryCodec,
 	_ exported.Height, _ exported.Prefix, _ string, _ []byte, clientState exported.ClientState,
 ) error {
-	path := host.KeyClientState
-	bz := store.Get([]byte(path))
+	path := host.ClientStateKey()
+	bz := store.Get(path)
 	if bz == nil {
 		return sdkerrors.Wrapf(clienttypes.ErrFailedClientStateVerification,
 			"not found for path: %s", path)
@@ -170,7 +170,7 @@ func (cs ClientState) VerifyConnectionState(
 		return err
 	}
 
-	if !reflect.DeepEqual(&prevConnection, connectionEnd) {
+	if !reflect.DeepEqual(prevConnection, connectionEnd) {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedConnectionStateVerification,
 			"connection end ≠ previous stored connection: \n%v\n≠\n%v", connectionEnd, prevConnection,
@@ -186,7 +186,7 @@ func (cs ClientState) VerifyChannelState(
 	store sdk.KVStore,
 	cdc codec.BinaryCodec,
 	_ exported.Height,
-	prefix exported.Prefix,
+	_ exported.Prefix,
 	_ []byte,
 	portID,
 	channelID string,
@@ -204,7 +204,7 @@ func (cs ClientState) VerifyChannelState(
 		return err
 	}
 
-	if !reflect.DeepEqual(&prevChannel, channel) {
+	if !reflect.DeepEqual(prevChannel, channel) {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedChannelStateVerification,
 			"channel end ≠ previous stored channel: \n%v\n≠\n%v", channel, prevChannel,
@@ -270,10 +270,11 @@ func (cs ClientState) VerifyPacketAcknowledgement(
 		return sdkerrors.Wrapf(clienttypes.ErrFailedPacketAckVerification, "not found for path %s", path)
 	}
 
-	if !bytes.Equal(data, acknowledgement) {
+	commit := channeltypes.CommitAcknowledgement(acknowledgement)
+	if !bytes.Equal(data, commit) {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedPacketAckVerification,
-			"ak bytes ≠ previous ack: \n%X\n≠\n%X", acknowledgement, data,
+			"ack bytes ≠ previous ack: \n%X\n≠\n%X", acknowledgement, data,
 		)
 	}
 
@@ -329,7 +330,7 @@ func (cs ClientState) VerifyNextSequenceRecv(
 	}
 
 	prevSequenceRecv := binary.BigEndian.Uint64(data)
-	if prevSequenceRecv != nextSequenceRecv {
+	if prevSequenceRecv+1 != nextSequenceRecv {
 		return sdkerrors.Wrapf(
 			clienttypes.ErrFailedNextSeqRecvVerification,
 			"next sequence receive ≠ previous stored sequence (%d ≠ %d)", nextSequenceRecv, prevSequenceRecv,
