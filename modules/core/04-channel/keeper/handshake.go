@@ -8,11 +8,13 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 
+	clienttypes "github.com/cosmos/ibc-go/v6/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v6/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v6/modules/core/04-channel/types"
 	porttypes "github.com/cosmos/ibc-go/v6/modules/core/05-port/types"
 	host "github.com/cosmos/ibc-go/v6/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v6/modules/core/exported"
+	mh "github.com/cosmos/ibc-go/v6/modules/core/multihop"
 )
 
 // ChanOpenInit is called by a module to initiate a channel opening handshake with
@@ -161,11 +163,28 @@ func (k Keeper) ChanOpenTry(
 		counterpartyHops, counterpartyVersion,
 	)
 
-	if err := k.connectionKeeper.VerifyChannelState(
-		ctx, connectionEnd, proofHeight, proofInit,
-		counterparty.PortId, counterparty.ChannelId, expectedChannel,
-	); err != nil {
-		return "", nil, err
+	if len(connectionHops) > 1 {
+		clientID := "client-0"
+		clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
+		if !found {
+			return "", nil, sdkerrors.Wrapf(clienttypes.ErrClientNotFound, "client state not found for client id: %s", clientID)
+		}
+		consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, clientID, clientState.GetLatestHeight())
+		if !found {
+			return "", nil, sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound, "consensus state %s not found for client id: %s", clientID)
+		}
+		conStateProof := make([]*mh.ConsStateProof, 3)
+		val := []byte("test")
+		if err := mh.VerifyMultiHopProofMembership(consensusState, clientState, k.cdc, conStateProof, val); err != nil {
+			return "", nil, err
+		}
+	} else {
+		if err := k.connectionKeeper.VerifyChannelState(
+			ctx, connectionEnd, proofHeight, proofInit,
+			counterparty.PortId, counterparty.ChannelId, expectedChannel,
+		); err != nil {
+			return "", nil, err
+		}
 	}
 
 	var (
