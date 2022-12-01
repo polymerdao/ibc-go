@@ -195,7 +195,14 @@
   
     - [Query](#ibc.core.channel.v1.Query)
   
+- [ibc/core/commitment/v1/commitment.proto](#ibc/core/commitment/v1/commitment.proto)
+    - [MerklePath](#ibc.core.commitment.v1.MerklePath)
+    - [MerklePrefix](#ibc.core.commitment.v1.MerklePrefix)
+    - [MerkleProof](#ibc.core.commitment.v1.MerkleProof)
+    - [MerkleRoot](#ibc.core.commitment.v1.MerkleRoot)
+  
 - [ibc/core/channel/v1/tx.proto](#ibc/core/channel/v1/tx.proto)
+    - [ConsStateProof](#ibc.core.channel.v1.ConsStateProof)
     - [MsgAcknowledgement](#ibc.core.channel.v1.MsgAcknowledgement)
     - [MsgAcknowledgementResponse](#ibc.core.channel.v1.MsgAcknowledgementResponse)
     - [MsgChannelCloseConfirm](#ibc.core.channel.v1.MsgChannelCloseConfirm)
@@ -210,6 +217,7 @@
     - [MsgChannelOpenInitResponse](#ibc.core.channel.v1.MsgChannelOpenInitResponse)
     - [MsgChannelOpenTry](#ibc.core.channel.v1.MsgChannelOpenTry)
     - [MsgChannelOpenTryResponse](#ibc.core.channel.v1.MsgChannelOpenTryResponse)
+    - [MsgConsStateProofs](#ibc.core.channel.v1.MsgConsStateProofs)
     - [MsgRecvPacket](#ibc.core.channel.v1.MsgRecvPacket)
     - [MsgRecvPacketResponse](#ibc.core.channel.v1.MsgRecvPacketResponse)
     - [MsgTimeout](#ibc.core.channel.v1.MsgTimeout)
@@ -259,12 +267,6 @@
     - [MsgUpgradeClientResponse](#ibc.core.client.v1.MsgUpgradeClientResponse)
   
     - [Msg](#ibc.core.client.v1.Msg)
-  
-- [ibc/core/commitment/v1/commitment.proto](#ibc/core/commitment/v1/commitment.proto)
-    - [MerklePath](#ibc.core.commitment.v1.MerklePath)
-    - [MerklePrefix](#ibc.core.commitment.v1.MerklePrefix)
-    - [MerkleProof](#ibc.core.commitment.v1.MerkleProof)
-    - [MerkleRoot](#ibc.core.commitment.v1.MerkleRoot)
   
 - [ibc/core/connection/v1/connection.proto](#ibc/core/connection/v1/connection.proto)
     - [ClientPaths](#ibc.core.connection.v1.ClientPaths)
@@ -2945,10 +2947,112 @@ Query provides defines the gRPC querier service
 
 
 
+<a name="ibc/core/commitment/v1/commitment.proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## ibc/core/commitment/v1/commitment.proto
+
+
+
+<a name="ibc.core.commitment.v1.MerklePath"></a>
+
+### MerklePath
+MerklePath is the path used to verify commitment proofs, which can be an
+arbitrary structured object (defined by a commitment type).
+MerklePath is represented from root-to-leaf
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `key_path` | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="ibc.core.commitment.v1.MerklePrefix"></a>
+
+### MerklePrefix
+MerklePrefix is merkle path prefixed to the key.
+The constructed key from the Path and the key will be append(Path.KeyPath,
+append(Path.KeyPrefix, key...))
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `key_prefix` | [bytes](#bytes) |  |  |
+
+
+
+
+
+
+<a name="ibc.core.commitment.v1.MerkleProof"></a>
+
+### MerkleProof
+MerkleProof is a wrapper type over a chain of CommitmentProofs.
+It demonstrates membership or non-membership for an element or set of
+elements, verifiable in conjunction with a known commitment root. Proofs
+should be succinct.
+MerkleProofs are ordered from leaf-to-root
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `proofs` | [ics23.CommitmentProof](#ics23.CommitmentProof) | repeated |  |
+
+
+
+
+
+
+<a name="ibc.core.commitment.v1.MerkleRoot"></a>
+
+### MerkleRoot
+MerkleRoot defines a merkle root hash.
+In the Cosmos SDK, the AppHash of a block header becomes the root.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `hash` | [bytes](#bytes) |  |  |
+
+
+
+
+
+ <!-- end messages -->
+
+ <!-- end enums -->
+
+ <!-- end HasExtensions -->
+
+ <!-- end services -->
+
+
+
 <a name="ibc/core/channel/v1/tx.proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
 ## ibc/core/channel/v1/tx.proto
+
+
+
+<a name="ibc.core.channel.v1.ConsStateProof"></a>
+
+### ConsStateProof
+MsgConsStateProof holds the information necessary to prove a multihop message
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `proof` | [ibc.core.commitment.v1.MerkleProof](#ibc.core.commitment.v1.MerkleProof) |  |  |
+| `consensus_state` | [ibc.core.client.v1.ConsensusStateWithHeight](#ibc.core.client.v1.ConsensusStateWithHeight) |  |  |
+| `prefixed_key` | [ibc.core.commitment.v1.MerklePath](#ibc.core.commitment.v1.MerklePath) |  |  |
+
+
+
 
 
 
@@ -3174,6 +3278,21 @@ MsgChannelOpenTryResponse defines the Msg/ChannelOpenTry response type.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | `version` | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="ibc.core.channel.v1.MsgConsStateProofs"></a>
+
+### MsgConsStateProofs
+MsgConsStateProofs holds the proof information for each intermediary hop for a multihop message
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `proofs` | [ConsStateProof](#ibc.core.channel.v1.ConsStateProof) | repeated |  |
 
 
 
@@ -3854,91 +3973,6 @@ Msg defines the ibc/client Msg service.
 | `UpdateClient` | [MsgUpdateClient](#ibc.core.client.v1.MsgUpdateClient) | [MsgUpdateClientResponse](#ibc.core.client.v1.MsgUpdateClientResponse) | UpdateClient defines a rpc handler method for MsgUpdateClient. | |
 | `UpgradeClient` | [MsgUpgradeClient](#ibc.core.client.v1.MsgUpgradeClient) | [MsgUpgradeClientResponse](#ibc.core.client.v1.MsgUpgradeClientResponse) | UpgradeClient defines a rpc handler method for MsgUpgradeClient. | |
 | `SubmitMisbehaviour` | [MsgSubmitMisbehaviour](#ibc.core.client.v1.MsgSubmitMisbehaviour) | [MsgSubmitMisbehaviourResponse](#ibc.core.client.v1.MsgSubmitMisbehaviourResponse) | SubmitMisbehaviour defines a rpc handler method for MsgSubmitMisbehaviour. | |
-
- <!-- end services -->
-
-
-
-<a name="ibc/core/commitment/v1/commitment.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## ibc/core/commitment/v1/commitment.proto
-
-
-
-<a name="ibc.core.commitment.v1.MerklePath"></a>
-
-### MerklePath
-MerklePath is the path used to verify commitment proofs, which can be an
-arbitrary structured object (defined by a commitment type).
-MerklePath is represented from root-to-leaf
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| `key_path` | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="ibc.core.commitment.v1.MerklePrefix"></a>
-
-### MerklePrefix
-MerklePrefix is merkle path prefixed to the key.
-The constructed key from the Path and the key will be append(Path.KeyPath,
-append(Path.KeyPrefix, key...))
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| `key_prefix` | [bytes](#bytes) |  |  |
-
-
-
-
-
-
-<a name="ibc.core.commitment.v1.MerkleProof"></a>
-
-### MerkleProof
-MerkleProof is a wrapper type over a chain of CommitmentProofs.
-It demonstrates membership or non-membership for an element or set of
-elements, verifiable in conjunction with a known commitment root. Proofs
-should be succinct.
-MerkleProofs are ordered from leaf-to-root
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| `proofs` | [ics23.CommitmentProof](#ics23.CommitmentProof) | repeated |  |
-
-
-
-
-
-
-<a name="ibc.core.commitment.v1.MerkleRoot"></a>
-
-### MerkleRoot
-MerkleRoot defines a merkle root hash.
-In the Cosmos SDK, the AppHash of a block header becomes the root.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| `hash` | [bytes](#bytes) |  |  |
-
-
-
-
-
- <!-- end messages -->
-
- <!-- end enums -->
-
- <!-- end HasExtensions -->
 
  <!-- end services -->
 
