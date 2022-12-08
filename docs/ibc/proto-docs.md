@@ -202,7 +202,6 @@
     - [MerkleRoot](#ibc.core.commitment.v1.MerkleRoot)
   
 - [ibc/core/channel/v1/tx.proto](#ibc/core/channel/v1/tx.proto)
-    - [ConsStateProof](#ibc.core.channel.v1.ConsStateProof)
     - [MsgAcknowledgement](#ibc.core.channel.v1.MsgAcknowledgement)
     - [MsgAcknowledgementResponse](#ibc.core.channel.v1.MsgAcknowledgementResponse)
     - [MsgChannelCloseConfirm](#ibc.core.channel.v1.MsgChannelCloseConfirm)
@@ -217,13 +216,14 @@
     - [MsgChannelOpenInitResponse](#ibc.core.channel.v1.MsgChannelOpenInitResponse)
     - [MsgChannelOpenTry](#ibc.core.channel.v1.MsgChannelOpenTry)
     - [MsgChannelOpenTryResponse](#ibc.core.channel.v1.MsgChannelOpenTryResponse)
-    - [MsgConsStateProofs](#ibc.core.channel.v1.MsgConsStateProofs)
+    - [MsgMultihopProofs](#ibc.core.channel.v1.MsgMultihopProofs)
     - [MsgRecvPacket](#ibc.core.channel.v1.MsgRecvPacket)
     - [MsgRecvPacketResponse](#ibc.core.channel.v1.MsgRecvPacketResponse)
     - [MsgTimeout](#ibc.core.channel.v1.MsgTimeout)
     - [MsgTimeoutOnClose](#ibc.core.channel.v1.MsgTimeoutOnClose)
     - [MsgTimeoutOnCloseResponse](#ibc.core.channel.v1.MsgTimeoutOnCloseResponse)
     - [MsgTimeoutResponse](#ibc.core.channel.v1.MsgTimeoutResponse)
+    - [MultihopProof](#ibc.core.channel.v1.MultihopProof)
   
     - [ResponseResultType](#ibc.core.channel.v1.ResponseResultType)
   
@@ -3039,23 +3039,6 @@ In the Cosmos SDK, the AppHash of a block header becomes the root.
 
 
 
-<a name="ibc.core.channel.v1.ConsStateProof"></a>
-
-### ConsStateProof
-MsgConsStateProof holds the information necessary to prove a multihop message
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| `proof` | [ibc.core.commitment.v1.MerkleProof](#ibc.core.commitment.v1.MerkleProof) |  |  |
-| `consensus_state` | [ibc.core.client.v1.ConsensusStateWithHeight](#ibc.core.client.v1.ConsensusStateWithHeight) |  |  |
-| `prefixed_key` | [ibc.core.commitment.v1.MerklePath](#ibc.core.commitment.v1.MerklePath) |  |  |
-
-
-
-
-
-
 <a name="ibc.core.channel.v1.MsgAcknowledgement"></a>
 
 ### MsgAcknowledgement
@@ -3284,15 +3267,17 @@ MsgChannelOpenTryResponse defines the Msg/ChannelOpenTry response type.
 
 
 
-<a name="ibc.core.channel.v1.MsgConsStateProofs"></a>
+<a name="ibc.core.channel.v1.MsgMultihopProofs"></a>
 
-### MsgConsStateProofs
-MsgConsStateProofs holds the proof information for each intermediary hop for a multihop message
+### MsgMultihopProofs
+MsgMultihopProofs holds the proof information for each intermediary hop for a multihop message
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| `proofs` | [ConsStateProof](#ibc.core.channel.v1.ConsStateProof) | repeated |  |
+| `key_proof` | [MultihopProof](#ibc.core.channel.v1.MultihopProof) |  |  |
+| `connection_proofs` | [MultihopProof](#ibc.core.channel.v1.MultihopProof) | repeated |  |
+| `consensus_proofs` | [MultihopProof](#ibc.core.channel.v1.MultihopProof) | repeated |  |
 
 
 
@@ -3395,6 +3380,23 @@ MsgTimeoutResponse defines the Msg/Timeout response type.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | `result` | [ResponseResultType](#ibc.core.channel.v1.ResponseResultType) |  |  |
+
+
+
+
+
+
+<a name="ibc.core.channel.v1.MultihopProof"></a>
+
+### MultihopProof
+MultihopProof holds the information necessary to prove a multihop message
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| `proof` | [bytes](#bytes) |  |  |
+| `value` | [bytes](#bytes) |  |  |
+| `prefixed_key` | [ibc.core.commitment.v1.MerklePath](#ibc.core.commitment.v1.MerklePath) |  |  |
 
 
 
