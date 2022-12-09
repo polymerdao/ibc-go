@@ -331,7 +331,7 @@ func (suite *KeeperTestSuite) TestChanOpenTryMultihop() {
 			tc.malleate() // call ChanOpenInit and setup port capabilities
 
 			counterparty := types.NewCounterparty(endpointA.ChannelConfig.PortID, ibctesting.FirstChannelID)
-			channelPath := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
+			channelKey := host.ChannelKey(counterparty.PortId, counterparty.ChannelId)
 
 			// query the channel
 			req := &types.QueryChannelRequest{
@@ -350,7 +350,7 @@ func (suite *KeeperTestSuite) TestChanOpenTryMultihop() {
 			fmt.Printf("expectedVal for proof generation: %x\n", expectedVal)
 
 			// generate multihop proof given keypath and value
-			proofs, err := ibctesting.GenerateMultiHopProof(paths, channelPath, expectedVal)
+			proofs, err := ibctesting.GenerateMultiHopProof(paths, channelKey, expectedVal)
 			suite.Require().NoError(err)
 
 			// verify call to ChanOpenTry completes successfully
@@ -417,7 +417,7 @@ func (suite *KeeperTestSuite) TestChanOpenAckMultihop() {
 				counterpartyChannelID = ibctesting.FirstChannelID
 			}
 
-			channelPath := host.ChannelPath(endpointZ.ChannelConfig.PortID, ibctesting.FirstChannelID)
+			channelKey := host.ChannelKey(endpointZ.ChannelConfig.PortID, ibctesting.FirstChannelID)
 			// query the channel
 			req := &types.QueryChannelRequest{
 				PortId:    endpointZ.ChannelConfig.PortID,
@@ -431,7 +431,7 @@ func (suite *KeeperTestSuite) TestChanOpenAckMultihop() {
 			suite.Require().NoError(err)
 
 			// generate multihop proof given keypath and value
-			proofs, err := ibctesting.GenerateMultiHopProof(paths.Reverse(), channelPath, expectedVal)
+			proofs, err := ibctesting.GenerateMultiHopProof(paths.Reverse(), channelKey, expectedVal)
 			suite.Require().NoError(err)
 			// verify call to ChanOpenTry completes successfully
 			proofHeight := endpointA.GetClientState().GetLatestHeight()
@@ -656,7 +656,7 @@ func (suite *KeeperTestSuite) TestChanOpenConfirmMultihop() {
 
 			tc.malleate()
 
-			channelPath := host.ChannelPath(endpointA.ChannelConfig.PortID, ibctesting.FirstChannelID)
+			channelKey := host.ChannelKey(endpointA.ChannelConfig.PortID, ibctesting.FirstChannelID)
 			// query the channel
 			req := &types.QueryChannelRequest{
 				PortId:    endpointA.ChannelConfig.PortID,
@@ -670,7 +670,7 @@ func (suite *KeeperTestSuite) TestChanOpenConfirmMultihop() {
 			suite.Require().NoError(err)
 
 			// generate multihop proof given keypath and value
-			proofs, err := ibctesting.GenerateMultiHopProof(paths, channelPath, expectedVal)
+			proofs, err := ibctesting.GenerateMultiHopProof(paths, channelKey, expectedVal)
 			suite.Require().NoError(err)
 			// verify call to ChanOpenTry completes successfully
 			proofHeight := endpointZ.GetClientState().GetLatestHeight()
@@ -928,10 +928,7 @@ func (suite *KeeperTestSuite) TestChanCloseConfirmMultihop() {
 
 	testCases := []testCase{
 		{"success", func() {
-			ibctesting.ChanOpenInit(paths)
-			ibctesting.ChanOpenTry(paths)
-			ibctesting.ChanOpenAck(paths)
-			ibctesting.ChanOpenConfirm(paths)
+			ibctesting.SetupChannel(paths)
 
 			channelCap = endpointZ.Chain.GetChannelCapability(endpointZ.ChannelConfig.PortID, endpointZ.ChannelID)
 			err := endpointA.SetChannelClosed()
@@ -954,7 +951,7 @@ func (suite *KeeperTestSuite) TestChanCloseConfirmMultihop() {
 
 			fmt.Printf("\n\n SETUP FINISHED FOR ChanOpenConfirm\n\n")
 
-			channelPath := host.ChannelPath(endpointA.ChannelConfig.PortID, ibctesting.FirstChannelID)
+			channelKey := host.ChannelKey(endpointA.ChannelConfig.PortID, ibctesting.FirstChannelID)
 			// query the channel
 			req := &types.QueryChannelRequest{
 				PortId:    endpointA.ChannelConfig.PortID,
@@ -968,7 +965,7 @@ func (suite *KeeperTestSuite) TestChanCloseConfirmMultihop() {
 			suite.Require().NoError(err)
 
 			// generate multihop proof given keypath and value
-			proofs, err := ibctesting.GenerateMultiHopProof(paths, channelPath, expectedVal)
+			proofs, err := ibctesting.GenerateMultiHopProof(paths, channelKey, expectedVal)
 			suite.Require().NoError(err)
 			proofHeight := endpointZ.GetClientState().GetLatestHeight()
 			proof, err := proofs.Marshal()
