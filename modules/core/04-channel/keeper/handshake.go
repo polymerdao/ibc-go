@@ -200,10 +200,10 @@ func (k Keeper) ChanOpenTry(
 				"consensus state not found for client id: %s", connectionEnd.ClientId)
 		}
 
-		key := host.ChannelKey(counterparty.PortId, counterparty.ChannelId)
+		key := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
+		prefix := checkEnd.GetCounterparty().GetPrefix()
 
-		// connectionHops is ZA, we want AZ
-		if err := mh.VerifyMultihopProof(k.cdc, consensusState, connectionHops, proofInit, key, value); err != nil {
+		if err := mh.VerifyMultihopProof(k.cdc, consensusState, connectionHops, proofInit, prefix, key, value); err != nil {
 			return "", nil, err
 		}
 	} else {
@@ -326,9 +326,15 @@ func (k Keeper) ChanOpenAck(
 				"consensus state not found for client id: %s", connectionEnd.ClientId)
 		}
 
-		key := host.ChannelKey(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
+		multihopConnectionEnd, err := mh.GetMultihopConnectionEnd(k.cdc, proofTry)
+		if err != nil {
+			return err
+		}
 
-		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofTry, key, value); err != nil {
+		key := host.ChannelPath(channel.Counterparty.PortId, counterpartyChannelID)
+		prefix := multihopConnectionEnd.GetCounterparty().GetPrefix()
+
+		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofTry, prefix, key, value); err != nil {
 			return err
 		}
 	} else {
@@ -441,9 +447,15 @@ func (k Keeper) ChanOpenConfirm(
 				"consensus state not found for client id: %s", connectionEnd.ClientId)
 		}
 
-		key := host.ChannelKey(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
+		multihopConnectionEnd, err := mh.GetMultihopConnectionEnd(k.cdc, proofAck)
+		if err != nil {
+			return err
+		}
 
-		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofAck, key, value); err != nil {
+		key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
+		prefix := multihopConnectionEnd.GetCounterparty().GetPrefix()
+
+		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofAck, prefix, key, value); err != nil {
 			return err
 		}
 	} else {
@@ -604,9 +616,15 @@ func (k Keeper) ChanCloseConfirm(
 				"consensus state not found for client id: %s", connectionEnd.ClientId)
 		}
 
-		key := host.ChannelKey(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
+		multihopConnectionEnd, err := mh.GetMultihopConnectionEnd(k.cdc, proofInit)
+		if err != nil {
+			return err
+		}
 
-		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofInit, key, value); err != nil {
+		key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
+		prefix := multihopConnectionEnd.GetCounterparty().GetPrefix()
+
+		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofInit, prefix, key, value); err != nil {
 			return err
 		}
 
