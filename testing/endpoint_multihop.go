@@ -362,3 +362,35 @@ func (mep multihopEndpoint) QueryProofAtHeight(key []byte, height int64) ([]byte
 func (mep multihopEndpoint) UpdateClient() error {
 	return mep.testEndpoint.UpdateClient()
 }
+
+// QueryPacketProof queries the multihop packet proof on the endpoint chain.
+func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet) []byte {
+	packetKey := host.PacketCommitmentKey(packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence())
+	commitment := channeltypes.CommitPacket(ep.Chain.Codec, packet)
+	return ep.QueryMultihopProof(
+		packetKey, commitment,
+		fmt.Sprintf("packet: %s", packet.String()),
+	)
+}
+
+// QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
+func (ep *EndpointM) QueryMultihopProof(key, expectedValue []byte, name string) []byte {
+	proof, err := GenerateMultiHopProof(
+		ep.paths,
+		key,
+		expectedValue,
+	)
+	require.NoError(
+		ep.Chain.T,
+		err,
+		"could not generate proof for [%s] with key [%s] on chain [%s]",
+		name, key,
+		ep.Chain.ChainID,
+	)
+	return ep.Chain.Codec.MustMarshal(proof)
+}
+
+// ProofHeight returns the proof height passed to this endpoint where the proof is generated for the counterparty chain.
+func (ep *EndpointM) ProofHeight() clienttypes.Height {
+	return ep.GetClientState().GetLatestHeight().(clienttypes.Height)
+}
