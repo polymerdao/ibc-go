@@ -373,6 +373,16 @@ func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet) []byte {
 	)
 }
 
+// QueryPacketAcknowledgementProof queries the multihop packet acknowledgement proof on the endpoint chain.
+func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet) []byte {
+	packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
+	commitment := channeltypes.CommitAcknowledgement(ibcmock.MockAcknowledgement.Acknowledgement())
+	return ep.QueryMultihopProof(
+		packetKey, commitment,
+		fmt.Sprintf("packet acknowledgement: %s", packet.String()),
+	)
+}
+
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
 func (ep *EndpointM) QueryMultihopProof(key, expectedValue []byte, name string) []byte {
 	proof, err := GenerateMultiHopProof(
