@@ -54,34 +54,35 @@ func (k Keeper) TimeoutPacket(
 		)
 	}
 
-	// TODO: get connectionEnd from connection state passed in and proven
+	connectionEnd, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
+	if !found {
+		return sdkerrors.Wrap(
+			connectiontypes.ErrConnectionNotFound,
+			channel.ConnectionHops[0],
+		)
+	}
+
 	var mProof types.MsgMultihopProofs
-	var connectionEnd *connectiontypes.ConnectionEnd
+	var proofTimestamp uint64
+	var err error
 	if len(channel.ConnectionHops) > 1 {
 		err := k.cdc.Unmarshal(proof, &mProof)
 		if err != nil {
 			return err
 		}
 
-		connectionEnd, err = mProof.GetMultihopConnectionEnd(k.cdc)
+		consensusState, err := mProof.GetMultihopCounterpartyConsensus(k.cdc)
 		if err != nil {
 			return err
 		}
+		proofTimestamp = consensusState.GetTimestamp()
 	} else {
-		ce, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
-		if !found {
-			return sdkerrors.Wrap(
-				connectiontypes.ErrConnectionNotFound,
-				channel.ConnectionHops[0],
-			)
+		// check that timeout height or timeout timestamp has passed on the other end
+		var err error
+		proofTimestamp, err = k.connectionKeeper.GetTimestampAtHeight(ctx, connectionEnd, proofHeight)
+		if err != nil {
+			return err
 		}
-		connectionEnd = &ce
-	}
-
-	// check that timeout height or timeout timestamp has passed on the other end
-	proofTimestamp, err := k.connectionKeeper.GetTimestampAtHeight(ctx, *connectionEnd, proofHeight)
-	if err != nil {
-		return err
 	}
 
 	timeoutHeight := packet.GetTimeoutHeight()
@@ -126,10 +127,23 @@ func (k Keeper) TimeoutPacket(
 		}
 
 		// check that the recv sequence is as claimed
-		err = k.connectionKeeper.VerifyNextSequenceRecv(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
-		)
+		if len(channel.ConnectionHops) > 1 {
+			// verify multihop proof
+			consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, connectionEnd.ClientId, proofHeight)
+			if !found {
+				err = sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound,
+					"consensus state not found for client id: %s", connectionEnd.ClientId)
+			}
+			key := host.NextSequenceRecvPath(packet.GetSourcePort(), packet.GetSourceChannel())
+			prefix := connectionEnd.GetCounterparty().GetPrefix()
+			val := sdk.Uint64ToBigEndian(nextSequenceRecv)
+			err = mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proof, prefix, key, val)
+		} else {
+			err = k.connectionKeeper.VerifyNextSequenceRecv(
+				ctx, connectionEnd, proofHeight, proof,
+				packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
+			)
+		}
 	case types.UNORDERED:
 		if len(channel.ConnectionHops) > 1 {
 			// verify multihop proof
@@ -260,7 +274,7 @@ func (k Keeper) TimeoutOnClose(
 		)
 	}
 
-	// TODO: get connectionEnd from connection state passed in and proven
+	// TODO: add multihop logic
 
 	connectionEnd, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
 	if !found {
