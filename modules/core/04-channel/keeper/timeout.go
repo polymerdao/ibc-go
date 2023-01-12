@@ -8,10 +8,12 @@ import (
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 
+	clienttypes "github.com/cosmos/ibc-go/v6/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v6/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v6/modules/core/04-channel/types"
 	host "github.com/cosmos/ibc-go/v6/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v6/modules/core/exported"
+	mh "github.com/cosmos/ibc-go/v6/modules/core/multihop"
 )
 
 // TimeoutPacket is called by a module which originally attempted to send a
@@ -53,17 +55,31 @@ func (k Keeper) TimeoutPacket(
 	}
 
 	// TODO: get connectionEnd from connection state passed in and proven
+	var mProof types.MsgMultihopProofs
+	var connectionEnd *connectiontypes.ConnectionEnd
+	if len(channel.ConnectionHops) > 1 {
+		err := k.cdc.Unmarshal(proof, &mProof)
+		if err != nil {
+			return err
+		}
 
-	connectionEnd, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
-	if !found {
-		return sdkerrors.Wrap(
-			connectiontypes.ErrConnectionNotFound,
-			channel.ConnectionHops[0],
-		)
+		connectionEnd, err = mProof.GetMultihopConnectionEnd(k.cdc)
+		if err != nil {
+			return err
+		}
+	} else {
+		ce, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
+		if !found {
+			return sdkerrors.Wrap(
+				connectiontypes.ErrConnectionNotFound,
+				channel.ConnectionHops[0],
+			)
+		}
+		connectionEnd = &ce
 	}
 
 	// check that timeout height or timeout timestamp has passed on the other end
-	proofTimestamp, err := k.connectionKeeper.GetTimestampAtHeight(ctx, connectionEnd, proofHeight)
+	proofTimestamp, err := k.connectionKeeper.GetTimestampAtHeight(ctx, *connectionEnd, proofHeight)
 	if err != nil {
 		return err
 	}
@@ -115,10 +131,36 @@ func (k Keeper) TimeoutPacket(
 			packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
 		)
 	case types.UNORDERED:
-		err = k.connectionKeeper.VerifyPacketReceiptAbsence(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
-		)
+		if len(channel.ConnectionHops) > 1 {
+			// verify multihop proof
+			consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, connectionEnd.ClientId, proofHeight)
+			if !found {
+				err = sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound,
+					"consensus state not found for client id: %s", connectionEnd.ClientId)
+			}
+			key := host.PacketReceiptPath(
+				packet.GetSourcePort(),
+				packet.GetSourceChannel(),
+				packet.GetSequence(),
+			)
+			prefix := connectionEnd.GetCounterparty().GetPrefix()
+			var value []byte = nil
+			clientState, found := k.clientKeeper.GetClientState(ctx, connectionEnd.Counterparty.ClientId)
+
+			////////////////////////////////////////////////////////////////////////////////////////////////
+			// NOTE: If the clientState is found and type is virtual the do a timeout inclusion check. This
+			// is a hack to work around the fact that virtual chains may not support non-inclusion proofs.
+			////////////////////////////////////////////////////////////////////////////////////////////////
+			if found && clientState.ClientType() == "virtual" {
+				value = commitment
+			}
+			err = mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proof, prefix, key, value)
+		} else {
+			err = k.connectionKeeper.VerifyPacketReceiptAbsence(
+				ctx, connectionEnd, proofHeight, proof,
+				packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
+			)
+		}
 	default:
 		panic(sdkerrors.Wrapf(types.ErrInvalidChannelOrdering, channel.Ordering.String()))
 	}

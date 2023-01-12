@@ -114,6 +114,7 @@ func verifyMultiHopConsensusStateProof(
 }
 
 // verifyMultiHopProofMembership verifies a multihop membership proof including all intermediate state proofs.
+// If the value is "nil" then a proof of non-membership is verified.
 func verifyMultiHopProofMembership(
 	consensusState exported.ConsensusState,
 	cdc codec.BinaryCodec,
@@ -142,10 +143,18 @@ func verifyMultiHopProofMembership(
 		return fmt.Errorf("failed to unpack consensus state: %w", err)
 	}
 
-	return keyProof.VerifyMembership(
-		commitmenttypes.GetSDKSpecs(),
-		secondConsState.GetRoot(),
-		*prefixedKey,
-		value,
-	)
+	if value == nil {
+		return keyProof.VerifyNonMembership(
+			commitmenttypes.GetSDKSpecs(),
+			secondConsState.GetRoot(),
+			*prefixedKey,
+		)
+	} else {
+		return keyProof.VerifyMembership(
+			commitmenttypes.GetSDKSpecs(),
+			secondConsState.GetRoot(),
+			*prefixedKey,
+			value,
+		)
+	}
 }
