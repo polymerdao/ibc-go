@@ -274,8 +274,6 @@ func (k Keeper) TimeoutOnClose(
 		)
 	}
 
-	// TODO: add multihop logic
-
 	connectionEnd, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
 	if !found {
 		return sdkerrors.Wrap(connectiontypes.ErrConnectionNotFound, channel.ConnectionHops[0])
@@ -299,20 +297,65 @@ func (k Keeper) TimeoutOnClose(
 		return sdkerrors.Wrapf(types.ErrInvalidPacket, "packet commitment bytes are not equal: got (%v), expected (%v)", commitment, packetCommitment)
 	}
 
-	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	var mProof types.MsgMultihopProofs
+	if len(channel.ConnectionHops) > 1 {
+		if err := k.cdc.Unmarshal(proofClosed, &mProof); err != nil {
+			return err
+		}
+	}
+
+	// connectionHops Z --> A
+	var counterpartyHops []string
+	if len(channel.ConnectionHops) > 1 {
+		var err error
+		counterpartyHops, err = mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
+		if err != nil {
+			return err
+		}
+	} else {
+		counterpartyHops = []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	}
 
 	counterparty := types.NewCounterparty(packet.GetSourcePort(), packet.GetSourceChannel())
 	expectedChannel := types.NewChannel(
 		types.CLOSED, channel.Ordering, counterparty, counterpartyHops, channel.Version,
 	)
 
-	// check that the opposing channel end has closed
-	if err := k.connectionKeeper.VerifyChannelState(
-		ctx, connectionEnd, proofHeight, proofClosed,
-		channel.Counterparty.PortId, channel.Counterparty.ChannelId,
-		expectedChannel,
-	); err != nil {
-		return err
+	if len(channel.ConnectionHops) > 1 {
+
+		// expected value bytes
+		value, err := expectedChannel.Marshal()
+		if err != nil {
+			return err
+		}
+
+		// verify multihop proof
+		consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, connectionEnd.ClientId, proofHeight)
+		if !found {
+			return sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound,
+				"consensus state not found for client id: %s", connectionEnd.ClientId)
+		}
+
+		multihopConnectionEnd, err := mProof.GetMultihopConnectionEnd(k.cdc)
+		if err != nil {
+			return err
+		}
+
+		key := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
+		prefix := multihopConnectionEnd.GetCounterparty().GetPrefix()
+
+		if err := mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proofClosed, prefix, key, value); err != nil {
+			return err
+		}
+	} else {
+		// check that the opposing channel end has closed
+		if err := k.connectionKeeper.VerifyChannelState(
+			ctx, connectionEnd, proofHeight, proofClosed,
+			channel.Counterparty.PortId, channel.Counterparty.ChannelId,
+			expectedChannel,
+		); err != nil {
+			return err
+		}
 	}
 
 	var err error
@@ -324,15 +367,55 @@ func (k Keeper) TimeoutOnClose(
 		}
 
 		// check that the recv sequence is as claimed
-		err = k.connectionKeeper.VerifyNextSequenceRecv(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
-		)
+		if len(channel.ConnectionHops) > 1 {
+			// verify multihop proof
+			consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, connectionEnd.ClientId, proofHeight)
+			if !found {
+				err = sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound,
+					"consensus state not found for client id: %s", connectionEnd.ClientId)
+			}
+			key := host.NextSequenceRecvPath(packet.GetSourcePort(), packet.GetSourceChannel())
+			prefix := connectionEnd.GetCounterparty().GetPrefix()
+			val := sdk.Uint64ToBigEndian(nextSequenceRecv)
+			err = mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proof, prefix, key, val)
+		} else {
+			err = k.connectionKeeper.VerifyNextSequenceRecv(
+				ctx, connectionEnd, proofHeight, proof,
+				packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
+			)
+		}
 	case types.UNORDERED:
-		err = k.connectionKeeper.VerifyPacketReceiptAbsence(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
-		)
+		if len(channel.ConnectionHops) > 1 {
+			// verify multihop proof
+			consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, connectionEnd.ClientId, proofHeight)
+			if !found {
+				err = sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound,
+					"consensus state not found for client id: %s", connectionEnd.ClientId)
+			}
+			key := host.PacketReceiptPath(
+				packet.GetSourcePort(),
+				packet.GetSourceChannel(),
+				packet.GetSequence(),
+			)
+			prefix := connectionEnd.GetCounterparty().GetPrefix()
+			var value []byte = nil
+			clientState, found := k.clientKeeper.GetClientState(ctx, connectionEnd.Counterparty.ClientId)
+
+			////////////////////////////////////////////////////////////////////////////////////////////////
+			// NOTE: If the clientState is found and type is virtual the do a timeout inclusion check. This
+			// is a hack to work around the fact that virtual chains may not support non-inclusion proofs.
+			////////////////////////////////////////////////////////////////////////////////////////////////
+			if found && clientState.ClientType() == "virtual" {
+				value = commitment
+			}
+
+			err = mh.VerifyMultihopProof(k.cdc, consensusState, channel.ConnectionHops, proof, prefix, key, value)
+		} else {
+			err = k.connectionKeeper.VerifyPacketReceiptAbsence(
+				ctx, connectionEnd, proofHeight, proof,
+				packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
+			)
+		}
 	default:
 		panic(sdkerrors.Wrapf(types.ErrInvalidChannelOrdering, channel.Ordering.String()))
 	}
