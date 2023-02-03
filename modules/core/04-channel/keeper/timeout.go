@@ -298,16 +298,12 @@ func (k Keeper) TimeoutOnClose(
 	}
 
 	var mProof types.MsgMultihopProofs
-	if len(channel.ConnectionHops) > 1 {
-		if err := k.cdc.Unmarshal(proofClosed, &mProof); err != nil {
-			return err
-		}
-	}
-
-	// connectionHops Z --> A
 	var counterpartyHops []string
 	if len(channel.ConnectionHops) > 1 {
 		var err error
+		if err = k.cdc.Unmarshal(proofClosed, &mProof); err != nil {
+			return err
+		}
 		counterpartyHops, err = mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
 		if err != nil {
 			return err
