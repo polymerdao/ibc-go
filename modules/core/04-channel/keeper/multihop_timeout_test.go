@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 
@@ -69,12 +68,11 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 				if tc.orderedChannel {
 					// proof of inclusion of next sequence number
 					key := host.NextSequenceRecvKey(packet.SourcePort, packet.SourceChannel)
-					val := sdk.Uint64ToBigEndian(nextSeqRecv)
-					proof = suite.Z().QueryMultihopProof(key, val, fmt.Sprintf("ordered packet timeout: %s", packet.String()))
+					proof = suite.Z().QueryMultihopProof(key)
 				} else {
 					// proof of absence of packet receipt
 					key := host.PacketReceiptKey(packet.SourcePort, packet.SourceChannel, packet.Sequence)
-					proof = suite.Z().QueryMultihopProof(key, []byte(nil), fmt.Sprintf("unordered packet timeout: %s", packet.String()))
+					proof = suite.Z().QueryMultihopProof(key)
 				}
 				proofHeight = suite.A().ProofHeight()
 			}
@@ -146,12 +144,11 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 
 			if tc.orderedChannel {
 				key := host.NextSequenceRecvKey(packet.GetDestPort(), packet.GetDestChannel())
-				val := sdk.Uint64ToBigEndian(nextSeqRecv)
-				proof = suite.Z().QueryMultihopProof(key, val, fmt.Sprintf("ordered packet timeout: %s", packet.String()))
+				proof = suite.Z().QueryMultihopProof(key)
 			} else {
 				// proof of absence of packet receipt
 				key := host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-				proof = suite.Z().QueryMultihopProof(key, []byte(nil), fmt.Sprintf("unordered packet timeout: %s", packet.String()))
+				proof = suite.Z().QueryMultihopProof(key)
 			}
 
 			err := suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.TimeoutOnClose(suite.A().Chain.GetContext(), chanCap, packet, proof, proofClosed, proofHeight, nextSeqRecv)

@@ -12,7 +12,7 @@ import (
 	"github.com/cosmos/ibc-go/v6/modules/core/exported"
 )
 
-// VerifyMultihopProof verifies a multihop proof
+// VerifyMultihopProof verifies a multihop proof. A nil value indicates a non-inclusion proof (proof of absence).
 func VerifyMultihopProof(
 	cdc codec.BinaryCodec,
 	consensusState exported.ConsensusState,
