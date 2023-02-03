@@ -65,15 +65,15 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 			tc.malleate()
 
 			if suite.Z().ConnectionID != "" {
+				var key []byte
 				if tc.orderedChannel {
 					// proof of inclusion of next sequence number
-					key := host.NextSequenceRecvKey(packet.SourcePort, packet.SourceChannel)
-					proof = suite.Z().QueryMultihopProof(key)
+					key = host.NextSequenceRecvKey(packet.SourcePort, packet.SourceChannel)
 				} else {
 					// proof of absence of packet receipt
-					key := host.PacketReceiptKey(packet.SourcePort, packet.SourceChannel, packet.Sequence)
-					proof = suite.Z().QueryMultihopProof(key)
+					key = host.PacketReceiptKey(packet.SourcePort, packet.SourceChannel, packet.Sequence)
 				}
+				proof = suite.Z().QueryMultihopProof(key)
 				proofHeight = suite.A().ProofHeight()
 			}
 
@@ -128,7 +128,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 	for i, tc := range testCases {
 		tc := tc
 		suite.Run(fmt.Sprintf("Case %s, %d/%d tests", tc.msg, i, len(testCases)), func() {
-			var proof []byte
+			var key []byte
 
 			suite.SetupTest() // reset
 			if tc.orderedChannel {
@@ -143,14 +143,13 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			proofHeight := suite.A().GetClientState().GetLatestHeight()
 
 			if tc.orderedChannel {
-				key := host.NextSequenceRecvKey(packet.GetDestPort(), packet.GetDestChannel())
-				proof = suite.Z().QueryMultihopProof(key)
+				key = host.NextSequenceRecvKey(packet.GetDestPort(), packet.GetDestChannel())
 			} else {
 				// proof of absence of packet receipt
-				key := host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-				proof = suite.Z().QueryMultihopProof(key)
+				key = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
 			}
 
+			proof := suite.Z().QueryMultihopProof(key)
 			err := suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.TimeoutOnClose(suite.A().Chain.GetContext(), chanCap, packet, proof, proofClosed, proofHeight, nextSeqRecv)
 
 			if tc.expPass {
