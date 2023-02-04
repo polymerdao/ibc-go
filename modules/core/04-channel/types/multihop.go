@@ -17,7 +17,7 @@ func (m *MsgMultihopProofs) GetMultihopConnectionEnd(cdc codec.BinaryCodec) (*Co
 	return &connectionEnd, nil
 }
 
-// GetMultihopCounterpartyConsensus returns the final connectionEnd from the counterparty perspective
+// GetMultihopCounterpartyConsensus returns the final consensusState from the counterparty perspective (e.g. the source chain state).
 func (m *MsgMultihopProofs) GetMultihopCounterpartyConsensus(cdc codec.BinaryCodec) (consensusState exported.ConsensusState, err error) {
 	err = cdc.UnmarshalInterface(m.ConsensusProofs[0].Value, &consensusState)
 	return
