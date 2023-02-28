@@ -150,7 +150,7 @@ func (k Keeper) ChanOpenTry(
 		)
 	}
 
-	// connectionHops A --> Z
+	// determine counterparty hops
 	var counterpartyHops []string
 	var checkEnd *connectiontypes.ConnectionEnd
 	var mProof types.MsgMultihopProofs
@@ -335,7 +335,7 @@ func (k Keeper) ChanOpenAck(
 		}
 	}
 
-	// connectionHops Z --> A
+	// determine counterparty hops
 	var counterpartyHops []string
 	if len(channel.ConnectionHops) > 1 {
 		var err error
@@ -474,7 +474,7 @@ func (k Keeper) ChanOpenConfirm(
 		}
 	}
 
-	// connectionHops A --> Z
+	// determine counterparty hops and maximum delayPeriod
 	var counterpartyHops []string
 	if len(channel.ConnectionHops) > 1 {
 		var err error
