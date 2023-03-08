@@ -225,7 +225,7 @@ func (k Keeper) RecvPacket(
 			return key, commitment, nil
 		}
 
-		if err := k.connectionKeeper.VerifyMultihopProof(
+		if err := k.connectionKeeper.VerifyMultihopMembership(
 			ctx, connectionEnd, proofHeight, proof,
 			channel.ConnectionHops, kvGenerator); err != nil {
 			return err
@@ -492,7 +492,7 @@ func (k Keeper) AcknowledgePacket(
 			return key, ackCommitment, nil
 		}
 
-		if err := k.connectionKeeper.VerifyMultihopProof(
+		if err := k.connectionKeeper.VerifyMultihopMembership(
 			ctx, connectionEnd, proofHeight, proof,
 			channel.ConnectionHops, kvGenerator); err != nil {
 			return err
