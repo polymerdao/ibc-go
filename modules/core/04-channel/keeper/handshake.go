@@ -203,7 +203,7 @@ func (k Keeper) ChanOpenTry(
 			return key, value, nil
 		}
 
-		if err := k.connectionKeeper.VerifyMultihopProof(
+		if err := k.connectionKeeper.VerifyMultihopMembership(
 			ctx, connectionEnd, proofHeight, proofInit,
 			connectionHops, kvGenerator); err != nil {
 			return "", nil, err
@@ -351,7 +351,7 @@ func (k Keeper) ChanOpenAck(
 			return key, value, nil
 		}
 
-		if err := k.connectionKeeper.VerifyMultihopProof(
+		if err := k.connectionKeeper.VerifyMultihopMembership(
 			ctx, connectionEnd, proofHeight, proofTry,
 			channel.ConnectionHops, kvGenerator); err != nil {
 			return err
@@ -474,7 +474,7 @@ func (k Keeper) ChanOpenConfirm(
 			return key, value, nil
 		}
 
-		if err := k.connectionKeeper.VerifyMultihopProof(
+		if err := k.connectionKeeper.VerifyMultihopMembership(
 			ctx, connectionEnd, proofHeight, proofAck,
 			channel.ConnectionHops, kvGenerator); err != nil {
 			return err
@@ -652,7 +652,7 @@ func (k Keeper) ChanCloseConfirm(
 			return key, value, nil
 		}
 
-		if err := k.connectionKeeper.VerifyMultihopProof(
+		if err := k.connectionKeeper.VerifyMultihopMembership(
 			ctx, connectionEnd, proofHeight, proofInit,
 			channel.ConnectionHops, kvGenerator); err != nil {
 			return err
@@ -767,7 +767,7 @@ func (k Keeper) ChanCloseFrozen(
 	}
 
 	// prove frozen client
-	if err := k.connectionKeeper.VerifyMultihopProof(
+	if err := k.connectionKeeper.VerifyMultihopMembership(
 		ctx, connectionEnd, proofHeight, proofFrozen,
 		connectionHops, kvGenerator); err != nil {
 		return err
