@@ -759,9 +759,13 @@ func (k Keeper) ChanCloseFrozen(
 		return fmt.Errorf("cannot unmarshal proof: %v", err)
 	}
 
-	kvGenerator := func(mProof *types.MsgMultihopProofs, multihopConnectionEnd *connectiontypes.ConnectionEnd) (string, []byte, error) {
-		key := host.FullClientStatePath(multihopConnectionEnd.ClientId)
-		value := mProof.KeyProof.Value // client state
+	kvGenerator := func(mProof *types.MsgMultihopProofs, multihopConnectionEnd *connectiontypes.ConnectionEnd) (key string, value []byte, err error) {
+		if mProof.KeyProofIndex != 0 {
+			key = host.FullClientStatePath(multihopConnectionEnd.Counterparty.ClientId)
+		} else {
+			key = host.FullClientStatePath(multihopConnectionEnd.ClientId)
+		}
+		value = mProof.KeyProof.Value // client state
 		return key, value, nil
 	}
 
