@@ -70,7 +70,11 @@ func (p ChanPath) GetConnectionHops() []string {
 
 // GenerateProof generates a proof for the given key on the the source chain, which is to be verified on the dest
 // chain.
-func (p ChanPath) GenerateProof(key []byte, val []byte, doVerify bool) (result *channeltypes.MsgMultihopProofs, err error) {
+func (p ChanPath) GenerateProof(
+	key []byte,
+	val []byte,
+	doVerify bool,
+) (result *channeltypes.MsgMultihopProofs, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			result = nil
@@ -109,7 +113,9 @@ func (p ChanPath) source() Endpoint {
 }
 
 // GenerateIntermediateStateProofs generates lists of connection, consensus, and client state proofs from the source to dest chains.
-func (p ChanPath) GenerateIntermediateStateProofs(proofGenFuncs []proofGenFunc) (result [][]*channeltypes.MultihopProof, err error) {
+func (p ChanPath) GenerateIntermediateStateProofs(
+	proofGenFuncs []proofGenFunc,
+) (result [][]*channeltypes.MultihopProof, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			result = nil
@@ -195,21 +201,6 @@ func genConnProof(
 		chainB.ConnectionID(), chainB.ChainID(), err,
 	)
 	return queryProof(chainB, host.ConnectionKey(chainB.ConnectionID()), bzConnAB, heightBC, consStateBCRoot, true)
-}
-
-// Generate a proof for the A's client state stored on B using B's consensusState root stored on C.
-func genClientProof(
-	chainB Endpoint,
-	heightAB, heightBC exported.Height,
-	consStateBCRoot exported.Root,
-) *channeltypes.MultihopProof {
-	clientAB := chainB.GetClientState()
-
-	bzClientAB, err := chainB.Codec().MarshalInterface(clientAB)
-	panicIfErr(err, "fail to marshal client '%s' on chain '%s' due to: %v",
-		chainB.ClientID(), chainB.ChainID(), err,
-	)
-	return queryProof(chainB, host.FullClientStateKey(chainB.ClientID()), bzClientAB, heightBC, consStateBCRoot, true)
 }
 
 // queryProof queries the key-value pair or absence proof stored on A and optionally ensures the proof
