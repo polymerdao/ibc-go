@@ -317,9 +317,9 @@ func (mep multihopEndpoint) Counterparty() multihop.Endpoint {
 	return mep.testEndpoint.Counterparty.MultihopEndpoint()
 }
 
-// GetClientState implements multihop.Endpoint
-func (mep multihopEndpoint) GetClientState() exported.ClientState {
-	return mep.testEndpoint.GetClientState()
+// GetClientConsensusHeight implements multihop.Endpoint
+func (mep multihopEndpoint) GetClientConsensusHeight() exported.Height {
+	return mep.testEndpoint.GetClientState().GetLatestHeight()
 }
 
 // GetConnection implements multihop.Endpoint

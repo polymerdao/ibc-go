@@ -20,7 +20,7 @@ type Endpoint interface {
 	ChainID() string
 	Codec() codec.BinaryCodec
 	ClientID() string
-	GetClientState() exported.ClientState
+	GetClientConsensusHeight() exported.Height
 	GetConsensusState(height exported.Height) (exported.ConsensusState, error)
 	ConnectionID() string
 	GetConnection() (*connectiontypes.ConnectionEnd, error)
@@ -136,8 +136,8 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 		// NOTE: chain {A,B,C} are relatively referenced to the current iteration, not to be confused with the chainID
 		// or endpointA/B.
 		chainB, chainC := p[i].EndpointB, p[i+1].EndpointB
-		heightAB := chainB.GetClientState().GetLatestHeight()
-		heightBC := chainC.GetClientState().GetLatestHeight()
+		heightAB := chainB.GetClientConsensusHeight()
+		heightBC := chainC.GetClientConsensusHeight()
 		consStateBC, err := chainC.GetConsensusState(heightBC)
 		panicIfErr(err,
 			"failed to get consensus state root of chain '%s' at height %s on chain '%s': %v",
@@ -227,7 +227,7 @@ func queryProof(
 	chainB := chainA.Counterparty()
 	// set optional params if not passed in
 	if heightAB == nil {
-		heightAB = chainB.GetClientState().GetLatestHeight()
+		heightAB = chainB.GetClientConsensusHeight()
 	}
 	if consStateABRoot == nil {
 		consState, err := chainB.GetConsensusState(heightAB)
