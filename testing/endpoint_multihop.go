@@ -317,8 +317,14 @@ func (mep multihopEndpoint) Counterparty() multihop.Endpoint {
 	return mep.testEndpoint.Counterparty.MultihopEndpoint()
 }
 
-// GetClientConsensusHeight implements multihop.Endpoint
-func (mep multihopEndpoint) GetClientConsensusHeight() exported.Height {
+// GetKeyValueProofHeight implements multihop.Endpoint
+func (mep multihopEndpoint) GetKeyValueProofHeight() exported.Height {
+	// for remote chains, the key/value proof height is the consensus height
+	return mep.GetConsensusHeight()
+}
+
+// GetConsensusHeight implements multihop.Endpoint
+func (mep multihopEndpoint) GetConsensusHeight() exported.Height {
 	return mep.testEndpoint.GetClientState().GetLatestHeight()
 }
 

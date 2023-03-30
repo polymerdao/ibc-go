@@ -20,7 +20,10 @@ type Endpoint interface {
 	ChainID() string
 	Codec() codec.BinaryCodec
 	ClientID() string
-	GetClientConsensusHeight() exported.Height
+	// Get counterparty chain's height for its key/value proof query.
+	GetKeyValueProofHeight() exported.Height
+	// Get counterparty chain's consensus state height stored on this chain.
+	GetConsensusHeight() exported.Height
 	GetConsensusState(height exported.Height) (exported.ConsensusState, error)
 	ConnectionID() string
 	GetConnection() (*connectiontypes.ConnectionEnd, error)
@@ -84,7 +87,8 @@ func (p ChanPath) GenerateProof(
 
 	result = &channeltypes.MsgMultihopProofs{}
 	// generate proof for key on source chain
-	result.KeyProof = queryProof(p.source(), key, val, nil, nil, doVerify)
+	keyProofHeight := p.Source().Counterparty().GetKeyValueProofHeight()
+	result.KeyProof = queryProof(p.Source(), key, val, keyProofHeight, nil, doVerify)
 
 	proofGenFuncs := []proofGenFunc{
 		genConsensusStateProof,
@@ -107,8 +111,8 @@ func (p ChanPath) GenerateProof(
 	return result, nil
 }
 
-// The source chain
-func (p ChanPath) source() Endpoint {
+// The Source chain
+func (p ChanPath) Source() Endpoint {
 	return p[0].EndpointA
 }
 
@@ -136,8 +140,8 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 		// NOTE: chain {A,B,C} are relatively referenced to the current iteration, not to be confused with the chainID
 		// or endpointA/B.
 		chainB, chainC := p[i].EndpointB, p[i+1].EndpointB
-		heightAB := chainB.GetClientConsensusHeight()
-		heightBC := chainC.GetClientConsensusHeight()
+		heightAB := chainB.GetConsensusHeight()
+		heightBC := chainC.GetConsensusHeight()
 		consStateBC, err := chainC.GetConsensusState(heightBC)
 		panicIfErr(err,
 			"failed to get consensus state root of chain '%s' at height %s on chain '%s': %v",
@@ -227,7 +231,7 @@ func queryProof(
 	chainB := chainA.Counterparty()
 	// set optional params if not passed in
 	if heightAB == nil {
-		heightAB = chainB.GetClientConsensusHeight()
+		heightAB = chainB.GetConsensusHeight()
 	}
 	if consStateABRoot == nil {
 		consState, err := chainB.GetConsensusState(heightAB)
