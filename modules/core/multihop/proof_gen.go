@@ -3,8 +3,8 @@ package multihop
 import (
 	"fmt"
 
+	sdkerrors "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/codec"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
 	channeltypes "github.com/cosmos/ibc-go/v7/modules/core/04-channel/types"
@@ -86,9 +86,12 @@ func (p ChanPath) GenerateProof(
 	}()
 
 	result = &channeltypes.MsgMultihopProofs{}
+
 	// generate proof for key on source chain
-	keyProofHeight := p.Source().Counterparty().GetKeyValueProofHeight()
-	result.KeyProof = queryProof(p.Source(), key, val, keyProofHeight, nil, doVerify)
+	chainB := p.Source().Counterparty()
+	keyProofHeight := chainB.GetKeyValueProofHeight()
+	consStateAB := getTmConsensusState(chainB, chainB.GetConsensusHeight())
+	result.KeyProof = queryProof(p.Source(), key, val, keyProofHeight, consStateAB.GetRoot(), doVerify)
 
 	proofGenFuncs := []proofGenFunc{
 		genConsensusStateProof,
@@ -142,19 +145,10 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 		chainB, chainC := p[i].EndpointB, p[i+1].EndpointB
 		heightAB := chainB.GetConsensusHeight()
 		heightBC := chainC.GetConsensusHeight()
-		consStateBC, err := chainC.GetConsensusState(heightBC)
-		panicIfErr(err,
-			"failed to get consensus state root of chain '%s' at height %s on chain '%s': %v",
-			chainB.ChainID(), heightBC, chainC.ChainID(), err,
-		)
-
-		cs, ok := consStateBC.(*tmclient.ConsensusState)
-		if !ok {
-			panic(fmt.Sprintf("expected consensus state to be tendermint consensus state, got: %T", consStateBC))
-		}
+		consStateBC := getTmConsensusState(chainC, heightBC)
 
 		for j, proofGenFunc := range proofGenFuncs {
-			proof := proofGenFunc(chainB, heightAB, heightBC, cs.GetRoot())
+			proof := proofGenFunc(chainB, heightAB, heightBC, consStateBC.GetRoot())
 			result[j] = append([]*channeltypes.MultihopProof{proof}, result[j]...)
 		}
 
@@ -289,6 +283,18 @@ func queryProof(
 		Value:       value,
 		PrefixedKey: &keyMerklePath,
 	}
+}
+
+func getTmConsensusState(end Endpoint, height exported.Height) *tmclient.ConsensusState {
+	consState, err := end.GetConsensusState(height)
+	panicIfErr(err, "fail to get consensus state of chain '%s' at height %s due to: %v",
+		end.ChainID(), height, err,
+	)
+	tmConsState, ok := consState.(*tmclient.ConsensusState)
+	if !ok {
+		panic(fmt.Sprintf("expected consensus state to be tendermint consensus state, got: %T", consState))
+	}
+	return tmConsState
 }
 
 func panicIfErr(err error, format string, args ...interface{}) {
