@@ -208,7 +208,7 @@ func genConnProof(
 // if doVerify is false, skip verification.
 // If value is nil, do non-membership verification.
 // If heightAB is nil, use the latest height of B's client state.
-// If consStateABRoot is nil, use the root of the consensus state of clientAB at heightAB.
+// consStateABRoot must be non-empty. It should be the root of the consensus state of clientAB at heightAB.
 //
 // Panic if proof generation or verification fails.
 func queryProof(
@@ -218,8 +218,17 @@ func queryProof(
 	consStateABRoot exported.Root,
 	doVerify bool,
 ) *channeltypes.MultihopProof {
+	// provide context for error thrown
+	defer func() {
+		if r := recover(); r != nil {
+			panic(fmt.Sprintf("fail to generate proof on chain '%s' for key [%s] at height %s: %v",
+				chainA.ChainID(), key, heightAB, r,
+			))
+		}
+	}()
+
 	if len(key) == 0 {
-		panic("key and value must be non-empty")
+		panic("key must be non-empty")
 	}
 
 	chainB := chainA.Counterparty()
@@ -227,32 +236,18 @@ func queryProof(
 	if heightAB == nil {
 		heightAB = chainB.GetConsensusHeight()
 	}
-	if consStateABRoot == nil {
-		consState, err := chainB.GetConsensusState(heightAB)
-		panicIfErr(err, "fail to get chain [%s]'s consensus state at height %s on chain '%s' due to: %v",
-			chainA.ChainID(), heightAB, chainB.ChainID(), err,
-		)
-		cs, ok := consState.(*tmclient.ConsensusState)
-		if !ok {
-			panic(fmt.Sprintf("expected consensus state to be tendermint consensus state, got: %T", consState))
-		}
-
-		consStateABRoot = cs.GetRoot()
+	if consStateABRoot == nil || consStateABRoot.Empty() {
+		panic("consensus state root must be non-empty")
 	}
 
 	keyMerklePath, err := chainB.GetMerklePath(string(key))
-	panicIfErr(err, "fail to create merkle path on chain '%s' with path '%s' due to: %v",
-		chainB.ChainID(), key, err,
-	)
+	panicIfErr(err, "fail to create merkle path [%s]: %v", key, err)
 
 	bzProof, _, err := chainA.QueryProofAtHeight(key, int64(heightAB.GetRevisionHeight()))
-	panicIfErr(err, "fail to generate proof on chain '%s' for key '%s' at height %d due to: %v",
-		chainA.ChainID(), key, heightAB, err,
-	)
+	panicIfErr(err, "proof query error: %v", err)
 
 	// only verify ke/value if value is not nil
 	if doVerify {
-
 		var proof commitmenttypes.MerkleProof
 		err = chainA.Codec().Unmarshal(bzProof, &proof)
 		panicIfErr(err, "fail to unmarshal chain [%s]'s proof on chain [%s] due to: %v",
@@ -264,18 +259,14 @@ func queryProof(
 				commitmenttypes.GetSDKSpecs(), consStateABRoot,
 				keyMerklePath, value,
 			)
+			panicIfErr(err, "verify membership failed: %v", err)
 		} else {
 			err = proof.VerifyNonMembership(
 				commitmenttypes.GetSDKSpecs(), consStateABRoot,
 				keyMerklePath,
 			)
+			panicIfErr(err, "verify non-membership failed: %v", err)
 		}
-
-		panicIfErr(
-			err,
-			"fail to verify proof chain [%s]'s key path '%s' at height %s due to: %v",
-			chainA.ChainID(), key, heightAB, err,
-		)
 	}
 
 	return &channeltypes.MultihopProof{
