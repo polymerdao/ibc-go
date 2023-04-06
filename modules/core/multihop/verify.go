@@ -112,7 +112,11 @@ func VerifyMultihopNonMembership(
 }
 
 // verifyConnectionStates verifies that the provided connections match the connectionHops field of the channel and are in OPEN state
-func verifyConnectionStates(cdc codec.BinaryCodec, connectionProofData []*channeltypes.MultihopProof, connectionHops []string) error {
+func verifyConnectionStates(
+	cdc codec.BinaryCodec,
+	connectionProofData []*channeltypes.MultihopProof,
+	connectionHops []string,
+) error {
 	if len(connectionProofData) != len(connectionHops)-1 {
 		return sdkerrors.Wrapf(connectiontypes.ErrInvalidLengthConnection,
 			"connectionHops length (%d) must match the connectionProofData length (%d)",
@@ -171,14 +175,21 @@ func verifyIntermediateStateProofs(
 		// verify consensus state client id matches previous connection counterparty client id
 		if len(expectedClientID) > 0 {
 			if len(consensusProof.PrefixedKey.KeyPath) < 2 {
-				return fmt.Errorf("invalid consensus proof key path length: %d", len(consensusProof.PrefixedKey.KeyPath))
+				return fmt.Errorf(
+					"invalid consensus proof key path length: %d",
+					len(consensusProof.PrefixedKey.KeyPath),
+				)
 			}
 			parts := strings.Split(consensusProof.PrefixedKey.KeyPath[1], "/")
 			if len(parts) < 2 {
 				return fmt.Errorf("invalid consensus proof key path: %s", consensusProof.PrefixedKey.KeyPath[1])
 			}
 			if parts[1] != expectedClientID {
-				return fmt.Errorf("consensus state client id (%s) does not match expected client id (%s)", parts[1], expectedClientID)
+				return fmt.Errorf(
+					"consensus state client id (%s) does not match expected client id (%s)",
+					parts[1],
+					expectedClientID,
+				)
 			}
 		}
 
@@ -262,12 +273,21 @@ func verifyKeyValueMembership(
 		return fmt.Errorf("expected consensus state to be tendermint consensus state, got: %T", consensusStateI)
 	}
 
-	return keyProof.VerifyMembership(
+	err = keyProof.VerifyMembership(
 		commitmenttypes.GetSDKSpecs(),
 		consensusState.GetRoot(),
 		prefixedKey,
 		value,
 	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to verify key membership with key: %s, root %X: %w",
+			key,
+			consensusState.GetRoot().GetHash(),
+			err,
+		)
+	}
+	return nil
 }
 
 // verifyKeyNonMembership verifies a multihop non-membership proof including all intermediate state proofs.
@@ -302,9 +322,18 @@ func verifyKeyNonMembership(
 		return fmt.Errorf("expected consensus state to be tendermint consensus state, got: %T", consensusStateI)
 	}
 
-	return keyProof.VerifyNonMembership(
+	err = keyProof.VerifyNonMembership(
 		commitmenttypes.GetSDKSpecs(),
 		consensusState.GetRoot(),
 		prefixedKey,
 	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to verify key non-membership with key: %s, root %X: %w",
+			key,
+			consensusState.GetRoot().GetHash(),
+			err,
+		)
+	}
+	return nil
 }
