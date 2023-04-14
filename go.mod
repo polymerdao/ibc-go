@@ -168,9 +168,8 @@ require (
 )
 
 replace (
-	//the line below doesn't work as expected because go considers simapp to be part of the revision
-	cosmossdk.io/simapp => "github.com/polymerdao/cosmos-sdk/simapp" v0.47.0-zkmint
+	cosmossdk.io/simapp => github.com/polymerdao/cosmos-sdk/simapp v0.0.0-20230413215209-9e2428d3cfe2
 	github.com/cometbft/cometbft => github.com/polymerdao/cometbft v0.37.0-zkmint
-	github.com/cosmos/cosmos-sdk => github.com/polymerdao/cosmos-sdk v0.47.0-zkmint
+	github.com/cosmos/cosmos-sdk => github.com/polymerdao/cosmos-sdk v0.47.1-zkmint
 	github.com/syndtr/goleveldb => github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 )
