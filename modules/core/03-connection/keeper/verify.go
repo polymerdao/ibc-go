@@ -1,3 +1,5 @@
+//go:build !noproof
+
 package keeper
 
 import (
@@ -77,7 +79,9 @@ func (k Keeper) VerifyClientConsensusState(
 		return sdkerrors.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
 	}
 
-	merklePath := commitmenttypes.NewMerklePath(host.FullConsensusStatePath(connection.GetCounterparty().GetClientID(), consensusHeight))
+	merklePath := commitmenttypes.NewMerklePath(
+		host.FullConsensusStatePath(connection.GetCounterparty().GetClientID(), consensusHeight),
+	)
 	merklePath, err = commitmenttypes.ApplyPrefix(connection.GetCounterparty().GetPrefix(), merklePath)
 	if err != nil {
 		return err
@@ -382,7 +386,10 @@ func (k Keeper) getBlockDelay(ctx sdk.Context, connection exported.ConnectionI) 
 
 // getClientStateAndVerificationStore returns the client state and associated KVStore for the provided client identifier.
 // If the client type is localhost then the core IBC KVStore is returned, otherwise the client prefixed store is returned.
-func (k Keeper) getClientStateAndVerificationStore(ctx sdk.Context, clientID string) (exported.ClientState, sdk.KVStore, error) {
+func (k Keeper) getClientStateAndVerificationStore(
+	ctx sdk.Context,
+	clientID string,
+) (exported.ClientState, sdk.KVStore, error) {
 	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
 	if !found {
 		return nil, nil, sdkerrors.Wrap(clienttypes.ErrClientNotFound, clientID)
