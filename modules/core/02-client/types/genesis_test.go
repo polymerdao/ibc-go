@@ -48,11 +48,12 @@ func (suite *TypesTestSuite) TestMarshalGenesisState() {
 func (suite *TypesTestSuite) TestValidateGenesis() {
 	privVal := ibctestingmock.NewPV()
 	pubKey, err := privVal.GetPubKey()
+	pubKeyAux, err := privVal.GetPubKeyAux()
 	suite.Require().NoError(err)
 
 	now := time.Now().UTC()
 
-	val := tmtypes.NewValidator(pubKey, 10)
+	val := tmtypes.NewValidator(pubKey, pubKeyAux, 10)
 	valSet := tmtypes.NewValidatorSet([]*tmtypes.Validator{val})
 
 	signers := make(map[string]tmtypes.PrivValidator)

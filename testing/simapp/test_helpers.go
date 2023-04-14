@@ -60,9 +60,10 @@ func setup(withGenesis bool, invCheckPeriod uint) (*SimApp, GenesisState) {
 func Setup(isCheckTx bool) *SimApp {
 	privVal := mock.NewPV()
 	pubKey, _ := privVal.GetPubKey()
+	pubKeyAux, _ := privVal.GetPubKeyAux()
 
 	// create validator set with single validator
-	validator := tmtypes.NewValidator(pubKey, 1)
+	validator := tmtypes.NewValidator(pubKey, pubKeyAux, 1)
 	valSet := tmtypes.NewValidatorSet([]*tmtypes.Validator{validator})
 
 	// generate genesis account

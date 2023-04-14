@@ -91,11 +91,12 @@ func (suite *KeeperTestSuite) SetupTest() {
 	suite.privVal = ibctestingmock.NewPV()
 
 	pubKey, err := suite.privVal.GetPubKey()
+	pubKeyAux, err := suite.privVal.GetPubKeyAux()
 	suite.Require().NoError(err)
 
 	testClientHeightMinus1 := types.NewHeight(0, height-1)
 
-	validator := tmtypes.NewValidator(pubKey, 1)
+	validator := tmtypes.NewValidator(pubKey, pubKeyAux, 1)
 	suite.valSet = tmtypes.NewValidatorSet([]*tmtypes.Validator{validator})
 	suite.valSetHash = suite.valSet.Hash()
 

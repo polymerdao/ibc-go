@@ -29,11 +29,12 @@ func (suite *TendermintTestSuite) TestMisbehaviour() {
 func (suite *TendermintTestSuite) TestMisbehaviourValidateBasic() {
 	altPrivVal := ibctestingmock.NewPV()
 	altPubKey, err := altPrivVal.GetPubKey()
+	altPubKeyAux, err := altPrivVal.GetPubKeyAux()
 	suite.Require().NoError(err)
 
 	revisionHeight := int64(height.RevisionHeight)
 
-	altVal := tmtypes.NewValidator(altPubKey, revisionHeight)
+	altVal := tmtypes.NewValidator(altPubKey, altPubKeyAux, revisionHeight)
 
 	// Create alternative validator set with only altVal
 	altValSet := tmtypes.NewValidatorSet([]*tmtypes.Validator{altVal})
