@@ -333,6 +333,10 @@ func (mep multihopEndpoint) GetConsensusState(height exported.Height) (exported.
 	return mep.testEndpoint.GetConsensusState(height), nil
 }
 
+func (mep multihopEndpoint) GetConsensusHeight() exported.Height {
+	return mep.testEndpoint.GetClientState().GetLatestHeight()
+}
+
 // GetMerklePath implements multihop.Endpoint
 func (mep multihopEndpoint) GetMerklePath(path string) (commitmenttypes.MerklePath, error) {
 	return commitmenttypes.ApplyPrefix(

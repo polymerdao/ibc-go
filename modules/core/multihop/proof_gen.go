@@ -22,6 +22,7 @@ type Endpoint interface {
 	ClientID() string
 	GetClientState() exported.ClientState
 	GetConsensusState(height exported.Height) (exported.ConsensusState, error)
+	GetConsensusHeight() exported.Height
 	ConnectionID() string
 	GetConnection() (*connectiontypes.ConnectionEnd, error)
 	// Returns the proof of the `key`` at `height` within the ibc module store.
