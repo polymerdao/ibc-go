@@ -804,8 +804,8 @@ github.com/polymerdao/cometbft v0.37.0-zkmint h1:YKZIsQG+K+wmQ/Gv3RUlZrHmZP7JijB
 github.com/polymerdao/cometbft v0.37.0-zkmint/go.mod h1:xGB9bHVnd+gdBjQu2AE5xjNb9VxJX+GHD4WoHx3yjis=
 github.com/polymerdao/cosmos-sdk v0.47.1-zkmint h1:4w3M91JNGS5Y18oD4Ca3e3nCmBpFrPGb7BOKniKF3YA=
 github.com/polymerdao/cosmos-sdk v0.47.1-zkmint/go.mod h1:3qpNuKNU3XS+apSAmdXlS92sS2nZlCQ08JVSLtPn8vY=
-github.com/polymerdao/cosmos-sdk/simapp v0.0.0-20230413215209-9e2428d3cfe2 h1:u3GWARNcJTWN7O6CmC1zA/CTGyGhvB1WiO27b2r4sAI=
-github.com/polymerdao/cosmos-sdk/simapp v0.0.0-20230413215209-9e2428d3cfe2/go.mod h1:SiTnGaNagXNQWIM3gTcs7hwJWs9dNXa/yYhQ7cm2tis=
+github.com/polymerdao/cosmos-sdk/simapp v0.47.1-zkmint h1:mn8DZ29EMrxVXXuG2EYSwLe7ZmW+IXlTDl0rZ2aXQp8=
+github.com/polymerdao/cosmos-sdk/simapp v0.47.1-zkmint/go.mod h1:SiTnGaNagXNQWIM3gTcs7hwJWs9dNXa/yYhQ7cm2tis=
 github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndrE9hABlRI=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3-0.20190127221311-3c4408c8b829/go.mod h1:p2iRAGwDERtqlqzRXnrOVns+ignqQo//hLXqYxZYVNs=
