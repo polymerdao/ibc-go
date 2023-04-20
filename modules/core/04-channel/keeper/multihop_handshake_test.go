@@ -11,7 +11,6 @@ import (
 
 // TestChannOpenInit tests the OpenInit handshake call for multihop channels.
 func (suite *MultihopTestSuite) TestChanOpenInit() {
-
 	var portCap *capabilitytypes.Capability
 
 	testCases := []testCase{
@@ -83,9 +82,7 @@ func (suite *MultihopTestSuite) TestChanOpenInit() {
 // The channel is being created on chainB. The port capability must be created on chainB before
 // ChanOpenTryMultihop can succeed.
 func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
-	var (
-		portCap *capabilitytypes.Capability
-	)
+	var portCap *capabilitytypes.Capability
 
 	testCases := []testCase{
 		{"success", func() {
@@ -158,9 +155,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 // It uses message passing to enter into the appropriate state and then calls
 // ChanOpenAck directly. The handshake call is occurring on chainA.
 func (suite *MultihopTestSuite) TestChanOpenAckMultihop() {
-	var (
-		channelCap *capabilitytypes.Capability
-	)
+	var channelCap *capabilitytypes.Capability
 
 	testCases := []testCase{
 		{"success", func() {
@@ -199,9 +194,7 @@ func (suite *MultihopTestSuite) TestChanOpenAckMultihop() {
 // to enter into the appropriate state and then calls ChanOpenConfirm directly. The handshake
 // call is occurring on chainB.
 func (suite *MultihopTestSuite) TestChanOpenConfirmMultihop() {
-	var (
-		channelCap *capabilitytypes.Capability
-	)
+	var channelCap *capabilitytypes.Capability
 
 	testCases := []testCase{
 		{"success", func() {
@@ -239,9 +232,7 @@ func (suite *MultihopTestSuite) TestChanOpenConfirmMultihop() {
 // TestChanCloseInitMultihop tests the initial closing of a handshake on chainA by calling
 // ChanCloseInit.
 func (suite *MultihopTestSuite) TestChanCloseInitMultihop() {
-	var (
-		channelCap *capabilitytypes.Capability
-	)
+	var channelCap *capabilitytypes.Capability
 
 	testCases := []testCase{
 		{"success", func() {
@@ -277,9 +268,7 @@ func (suite *MultihopTestSuite) TestChanCloseInitMultihop() {
 // TestChanCloseConfirmMultihop tests the confirming closing channel ends by calling ChanCloseConfirm on chainZ.
 // ChanCloseInit is bypassed on chainA by setting the channel state in the ChannelKeeper.
 func (suite *MultihopTestSuite) TestChanCloseConfirmMultihop() {
-	var (
-		channelCap *capabilitytypes.Capability
-	)
+	var channelCap *capabilitytypes.Capability
 
 	testCases := []testCase{
 		{"success", func() {

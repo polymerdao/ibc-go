@@ -405,7 +405,6 @@ func (k Keeper) VerifyMultihopMembership(
 	connectionHops []string,
 	kvGenerator channeltypes.KeyValueGenFunc,
 ) error {
-
 	var mProof channeltypes.MsgMultihopProofs
 	if err := k.cdc.Unmarshal(proof, &mProof); err != nil {
 		return err
@@ -474,7 +473,6 @@ func (k Keeper) VerifyMultihopNonMembership(
 	connectionHops []string,
 	kvGenerator channeltypes.KeyGenFunc,
 ) error {
-
 	var mProof channeltypes.MsgMultihopProofs
 	if err := k.cdc.Unmarshal(proof, &mProof); err != nil {
 		return err
