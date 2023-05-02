@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	sdkerrors "cosmossdk.io/errors"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
@@ -35,10 +36,19 @@ type Endpoint interface {
 	Counterparty() Endpoint
 }
 
+func EndpointToString(endpoint Endpoint) string {
+	return fmt.Sprintf("{\"chain_id\": %q, \"client_id\": %q, \"connection_id\": %q}",
+		endpoint.ChainID(), endpoint.ClientID(), endpoint.ConnectionID())
+}
+
 // Path contains two endpoints of chains that have a direct IBC connection, ie. a single-hop IBC path.
 type Path struct {
 	EndpointA Endpoint
 	EndpointB Endpoint
+}
+
+func (p Path) String() string {
+	return fmt.Sprintf("[%s, %s]", EndpointToString(p.EndpointA), EndpointToString(p.EndpointB))
 }
 
 // ChanPath represents a multihop channel path that spans 2 or more single-hop `Path`s.
@@ -175,6 +185,17 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 	}
 
 	return result, nil
+}
+
+func (p ChanPath) String() string {
+	output := "["
+	for i, path := range p.Paths {
+		if i > 0 {
+			output += ", "
+		}
+		output += path.String()
+	}
+	return output + "]"
 }
 
 type proofGenFunc func(Endpoint, exported.Height, exported.Height, exported.Root) *channeltypes.MultihopProof
