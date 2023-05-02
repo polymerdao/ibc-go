@@ -37,8 +37,10 @@ type Endpoint interface {
 }
 
 func EndpointToString(endpoint Endpoint) string {
-	return fmt.Sprintf("{\"chain_id\": %q, \"client_id\": %q, \"connection_id\": %q}",
-		endpoint.ChainID(), endpoint.ClientID(), endpoint.ConnectionID())
+	kvHeight := endpoint.GetKeyValueProofHeight()
+	consHeight := endpoint.GetConsensusHeight()
+	return fmt.Sprintf("{\"chain_id\": %q, \"client_id\": %q, \"connection_id\": %q, \"kv_proof_height\": %q, \"consensus_height\": %q}",
+		endpoint.ChainID(), endpoint.ClientID(), endpoint.ConnectionID(), kvHeight, consHeight)
 }
 
 // Path contains two endpoints of chains that have a direct IBC connection, ie. a single-hop IBC path.
