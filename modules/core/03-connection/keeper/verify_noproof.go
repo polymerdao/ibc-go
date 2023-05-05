@@ -1,4 +1,4 @@
-//go:build demo
+//go:build noproof
 
 package keeper
 
