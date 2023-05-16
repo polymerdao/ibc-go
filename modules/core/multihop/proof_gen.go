@@ -36,27 +36,15 @@ type Endpoint interface {
 	Counterparty() Endpoint
 }
 
-func EndpointToString(endpoint Endpoint) string {
-	kvHeight := endpoint.GetKeyValueProofHeight()
-	consHeight := endpoint.GetConsensusHeight()
-	return fmt.Sprintf("{\"chain_id\": %q, \"client_id\": %q, \"connection_id\": %q, \"kv_proof_height\": %q, \"consensus_height\": %q}",
-		endpoint.ChainID(), endpoint.ClientID(), endpoint.ConnectionID(), kvHeight, consHeight)
-}
-
 // Path contains two endpoints of chains that have a direct IBC connection, ie. a single-hop IBC path.
 type Path struct {
 	EndpointA Endpoint
 	EndpointB Endpoint
 }
 
-func (p Path) String() string {
-	return fmt.Sprintf("[%s, %s]", EndpointToString(p.EndpointA), EndpointToString(p.EndpointB))
-}
-
 // ChanPath represents a multihop channel path that spans 2 or more single-hop `Path`s.
 type ChanPath struct {
-	Paths        []*Path
-	counterparty *ChanPath
+	Paths []*Path
 }
 
 // NewChanPath creates a new multi-hop ChanPath from a list of single-hop Paths.
@@ -69,19 +57,13 @@ func NewChanPath(paths []*Path) ChanPath {
 	}
 }
 
-func (p ChanPath) Counterparty() *ChanPath {
-	if p.counterparty != nil {
-		return p.counterparty
-	}
-	p.counterparty = &ChanPath{
-		counterparty: &p,
-	}
-	p.counterparty.Paths = make([]*Path, len(p.Paths))
+func (p ChanPath) Counterparty() ChanPath {
+	paths := make([]*Path, len(p.Paths))
 	for i, hop := range p.Paths {
 		reversedSinglePath := Path{EndpointA: hop.EndpointB, EndpointB: hop.EndpointA}
-		p.counterparty.Paths[len(p.Paths)-i-1] = &reversedSinglePath
+		paths[len(p.Paths)-i-1] = &reversedSinglePath
 	}
-	return p.counterparty
+	return NewChanPath(paths)
 }
 
 // UpdateClient updates the clientState{AB, BC, .. YZ} so chainA's consensusState is propogated to chainZ.
@@ -187,17 +169,6 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 	}
 
 	return result, nil
-}
-
-func (p ChanPath) String() string {
-	output := "["
-	for i, path := range p.Paths {
-		if i > 0 {
-			output += ", "
-		}
-		output += path.String()
-	}
-	return output + "]"
 }
 
 type proofGenFunc func(Endpoint, exported.Height, exported.Height, exported.Root) *channeltypes.MultihopProof
