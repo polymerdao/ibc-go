@@ -257,6 +257,7 @@ func queryProof(
 	keyMerklePath, err := chainB.GetMerklePath(string(key))
 	panicIfErr(err, "fail to create merkle path [%s]: %v", key, err)
 
+	// [LQ]: Should we use chainA.GetHeight() instead of heightAB?
 	bzProof, _, err := chainA.QueryProofAtHeight(key, int64(heightAB.GetRevisionHeight()))
 	panicIfErr(err, "proof query error: %v", err)
 
