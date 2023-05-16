@@ -5,6 +5,7 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 	"github.com/cosmos/cosmos-sdk/codec"
+
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
 	channeltypes "github.com/cosmos/ibc-go/v7/modules/core/04-channel/types"
@@ -16,15 +17,28 @@ import (
 
 // Endpoint represents a Cosmos chain endpoint for queries.
 // Endpoint is stateless from caller's perspective.
+// [LQ]: Endpoint represents a chain, IMO, some the function names are not intuitive.
+//  1. Endpoint represents 'self' chain
+//  2. Endpoint includes a light client (ClientID) for the counterparty chain
+//  3. For self-chain operation, we can use straight naming, e.g. GetConsensusState(), meaning get the consensus state of self-chain
+//  4. For counter-party chain operations, we can use `Client` infix, e.g. GetClientConsensusState(), meaning get the consensus state of counter-party chain
+//     or just use `CounterParty` infix
 type Endpoint interface {
 	ChainID() string
 	Codec() codec.BinaryCodec
 	ClientID() string
+
+	// [LQ]: still not sure the benefits of using this, let's see after discussion of a concrete example of prefer "using polymer height as virtual chain height"
 	// Get counterparty chain's height for its key/value proof query.
 	GetKeyValueProofHeight() exported.Height
+
+	// [LQ]: may change to GetClientConsensusHeight()?
 	// Get counterparty chain's consensus state height stored on this chain.
 	GetConsensusHeight() exported.Height
+
+	// [LQ]: may change to GetClientConsensusState()?
 	GetConsensusState(height exported.Height) (exported.ConsensusState, error)
+
 	ConnectionID() string
 	GetConnection() (*connectiontypes.ConnectionEnd, error)
 	// Returns the proof of the `key`` at `height` within the ibc module store.
