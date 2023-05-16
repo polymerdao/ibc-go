@@ -133,7 +133,6 @@ func (k Keeper) ChanOpenTry(
 	proofInit []byte,
 	proofHeight exported.Height,
 ) (string, *capabilitytypes.Capability, error) {
-
 	// generate a new channel
 	channelID := k.GenerateChannelIdentifier(ctx)
 

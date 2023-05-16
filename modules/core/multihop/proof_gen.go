@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	sdkerrors "cosmossdk.io/errors"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
@@ -42,19 +43,32 @@ type Path struct {
 }
 
 // ChanPath represents a multihop channel path that spans 2 or more single-hop `Path`s.
-type ChanPath []*Path
+type ChanPath struct {
+	Paths []*Path
+}
 
 // NewChanPath creates a new multi-hop ChanPath from a list of single-hop Paths.
 func NewChanPath(paths []*Path) ChanPath {
 	if len(paths) < 2 {
 		panic(fmt.Sprintf("multihop channel path expects at least 2 single-hop paths, but got %d", len(paths)))
 	}
-	return ChanPath(paths)
+	return ChanPath{
+		Paths: paths,
+	}
+}
+
+func (p ChanPath) Counterparty() ChanPath {
+	paths := make([]*Path, len(p.Paths))
+	for i, hop := range p.Paths {
+		reversedSinglePath := Path{EndpointA: hop.EndpointB, EndpointB: hop.EndpointA}
+		paths[len(p.Paths)-i-1] = &reversedSinglePath
+	}
+	return NewChanPath(paths)
 }
 
 // UpdateClient updates the clientState{AB, BC, .. YZ} so chainA's consensusState is propogated to chainZ.
 func (p ChanPath) UpdateClient() error {
-	for _, path := range p {
+	for _, path := range p.Paths {
 		if err := path.EndpointB.UpdateClient(); err != nil {
 			return err
 		}
@@ -64,8 +78,8 @@ func (p ChanPath) UpdateClient() error {
 
 // GetConnectionHops returns the connection hops for the multihop channel.
 func (p ChanPath) GetConnectionHops() []string {
-	hops := make([]string, len(p))
-	for i, path := range p {
+	hops := make([]string, len(p.Paths))
+	for i, path := range p.Paths {
 		hops[i] = path.EndpointA.ConnectionID()
 	}
 	return hops
@@ -116,7 +130,7 @@ func (p ChanPath) GenerateProof(
 
 // The Source chain
 func (p ChanPath) Source() Endpoint {
-	return p[0].EndpointA
+	return p.Paths[0].EndpointA
 }
 
 // GenerateIntermediateStateProofs generates lists of connection, consensus, and client state proofs from the source to dest chains.
@@ -133,7 +147,7 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 	result = make([][]*channeltypes.MultihopProof, len(proofGenFuncs))
 
 	// iterate over all but last single-hop path
-	iterCount := len(p) - 1
+	iterCount := len(p.Paths) - 1
 	for i := 0; i < iterCount; i++ {
 		// Given 3 chains connected by 2 paths:
 		// A -(path)-> B -(nextPath)-> C
@@ -142,7 +156,7 @@ func (p ChanPath) GenerateIntermediateStateProofs(
 		// The loop starts with the source chain as A, and ends with the dest chain as chain C.
 		// NOTE: chain {A,B,C} are relatively referenced to the current iteration, not to be confused with the chainID
 		// or endpointA/B.
-		chainB, chainC := p[i].EndpointB, p[i+1].EndpointB
+		chainB, chainC := p.Paths[i].EndpointB, p.Paths[i+1].EndpointB
 		heightAB := chainB.GetConsensusHeight()
 		heightBC := chainC.GetConsensusHeight()
 		consStateBC := getTmConsensusState(chainC, heightBC)

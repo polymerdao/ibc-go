@@ -50,7 +50,6 @@ func VerifyMultihopMembership(
 	key string,
 	value []byte,
 ) error {
-
 	// verify proof lengths
 	if len(proofs.ConnectionProofs) < 1 || len(proofs.ConsensusProofs) < 1 {
 		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be > 0",
@@ -85,7 +84,6 @@ func VerifyMultihopNonMembership(
 	prefix exported.Prefix,
 	key string,
 ) error {
-
 	// verify proof lengths
 	if len(proofs.ConnectionProofs) < 1 || len(proofs.ConsensusProofs) < 1 {
 		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be > 0",
@@ -247,7 +245,6 @@ func verifyKeyValueMembership(
 	key string,
 	value []byte,
 ) error {
-
 	// no keyproof provided, nothing to verify
 	if proofs.KeyProof == nil {
 		return nil

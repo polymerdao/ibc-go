@@ -32,19 +32,19 @@ type EndpointM struct {
 
 // NewEndpointM constructs a new EndpointM without the counterparty.
 // CONTRACT: the counterparty EndpointM must be set by the caller.
-func NewEndpointMFromLinkedPaths(path LinkedPaths) (A, Z EndpointM) {
-	A.paths = path
-	A.Endpoint = A.paths.A()
-	A.Counterparty = &Z
+func NewEndpointMFromLinkedPaths(path LinkedPaths) (a, z EndpointM) {
+	a.paths = path
+	a.Endpoint = a.paths.A()
+	a.Counterparty = &z
 
-	Z.paths = path.Reverse()
-	Z.Endpoint = Z.paths.A()
-	Z.Counterparty = &A
+	z.paths = path.Reverse()
+	z.Endpoint = z.paths.A()
+	z.Counterparty = &a
 
 	// create multihop channel paths
-	A.mChanPath = A.paths.ToMultihopChanPath()
-	Z.mChanPath = Z.paths.ToMultihopChanPath()
-	return A, Z
+	a.mChanPath = a.paths.ToMultihopChanPath()
+	z.mChanPath = z.paths.ToMultihopChanPath()
+	return a, z
 }
 
 // ChanOpenInit will construct and execute a MsgChannelOpenInit on the associated EndpointM.
@@ -70,7 +70,7 @@ func (ep *EndpointM) ChanOpenInit() error {
 
 // ChanOpenTry will construct and execute a MsgChannelOpenTry on the associated EndpointM.
 func (ep *EndpointM) ChanOpenTry() error {
-	// propogate client state updates from A to Z
+	// propagate client state updates from A to Z
 	err := ep.UpdateAllClients()
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func (ep *EndpointM) ChanOpenTry() error {
 
 // ChanOpenAck will construct and execute a MsgChannelOpenAck on the associated EndpointM.
 func (ep *EndpointM) ChanOpenAck() error {
-	// propogate client state updates from Z to A
+	// propagate client state updates from Z to A
 	err := ep.UpdateAllClients()
 	if err != nil {
 		return err
@@ -130,7 +130,7 @@ func (ep *EndpointM) ChanOpenAck() error {
 
 // ChanOpenConfirm will construct and execute a MsgChannelOpenConfirm on the associated EndpointM.
 func (ep *EndpointM) ChanOpenConfirm() error {
-	// propogate client state updates from Z to A
+	// propagate client state updates from Z to A
 	err := ep.UpdateAllClients()
 	if err != nil {
 		return err
@@ -166,13 +166,13 @@ func (ep *EndpointM) SendPacket(
 	timeoutTimestamp uint64,
 	data []byte,
 ) (*channeltypes.Packet, error) {
-	portId, channelId := ep.ChannelConfig.PortID, ep.ChannelID
-	channelCap := ep.Chain.GetChannelCapability(portId, channelId)
+	portID, channelID := ep.ChannelConfig.PortID, ep.ChannelID
+	channelCap := ep.Chain.GetChannelCapability(portID, channelID)
 
 	seq, err := ep.Chain.App.GetIBCKeeper().ChannelKeeper.SendPacket(
 		ep.Chain.GetContext(),
 		channelCap,
-		portId, channelId,
+		portID, channelID,
 		timeoutHeight,
 		timeoutTimestamp,
 		data,
@@ -183,7 +183,7 @@ func (ep *EndpointM) SendPacket(
 	ep.Chain.Coordinator.CommitBlock(ep.Chain)
 	require.NoError(ep.Chain.T, ep.Counterparty.UpdateAllClients())
 
-	packet := channeltypes.NewPacket(data, seq, portId, channelId,
+	packet := channeltypes.NewPacket(data, seq, portID, channelID,
 		ep.Counterparty.ChannelConfig.PortID, ep.Counterparty.ChannelID,
 		timeoutHeight, timeoutTimestamp,
 	)
