@@ -158,19 +158,17 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 	)
 
 	testCases := []testCase{
-		/* */
 		{"success", func() {
-		    suite.SetupConnections()
-		    // manually call ChanOpenInit so we can properly set the connectionHops
-		    suite.Require().NoError(suite.A().ChanOpenInit())
+			suite.SetupConnections()
+			// manually call ChanOpenInit so we can properly set the connectionHops
+			suite.Require().NoError(suite.A().ChanOpenInit())
 
-		    suite.Z().Chain.CreatePortCapability(
-		        suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
-		        suite.Z().ChannelConfig.PortID,
-		    )
-		    portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
+			suite.Z().Chain.CreatePortCapability(
+				suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
+				suite.Z().ChannelConfig.PortID,
+			)
+			portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
 		}, true},
-		/* */
 		{"connection doesn't exist", func() {
 			suite.chanPath.EndpointA.ConnectionID = ibctesting.FirstConnectionID
 			suite.chanPath.EndpointZ.ConnectionID = ibctesting.FirstConnectionID
@@ -179,31 +177,22 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
 		}, false},
-		// {"connection doesn't exist", func() {
-		// 	ibctesting.ChanOpenInit(paths[0].EndpointA, connectionHopsAZ)
-		// 	paths[1].EndpointB.ConnectionID = "notfound"
-		// 	chainZ := paths[len(paths)-1].EndpointB.Chain
-		// 	// pass capability check
-		// 	chainZ.CreatePortCapability(suite.chainB.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
-		// 	portCap = chainZ.GetPortCapability(ibctesting.MockPort)
-		// }, true},
-		// {"connection is not OPEN", func() {
-		// 	ibctesting.ChanOpenInit(paths[0].EndpointA, connectionHopsAZ)
-		// 	// pass capability check
-		// 	chainZ := paths[len(paths)-1].EndpointB.Chain
-		// 	chainZ.CreatePortCapability(suite.chainB.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
-		// 	portCap = chainZ.GetPortCapability(ibctesting.MockPort)
+		{"connection is not OPEN", func() {
+			suite.coord.SetupClients(suite.chanPath)
+			// pass capability check
+			suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
+			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
 
-		// 	//err := paths[2].EndpointB.ConnOpenInit()
-		// 	//suite.Require().NoError(err)
-		// }, false},
+			err := suite.chanPath.EndpointZ.ConnOpenInit()
+			suite.Require().NoError(err)
+		}, false},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
 			suite.SetupTest() // reset
-			tc.malleate() // call ChanOpenInit and setup port capabilities
+			tc.malleate()     // call ChanOpenInit and setup port capabilities
 
 			if suite.chanPath.EndpointZ.ClientID != "" {
 				// update client on chainB
@@ -215,12 +204,12 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 
 			if tc.expPass {
 				suite.Require().NoError(err)
-            } else {
-                if err != nil {
-                    return
-                }
-            }
-                
+			} else {
+				if err != nil {
+					return
+				}
+			}
+
 			channelID, cap, err := suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenTry(
 				suite.Z().Chain.GetContext(),
 				suite.Z().ChannelConfig.Order,
@@ -277,12 +266,12 @@ func (suite *MultihopTestSuite) TestChanOpenAckMultihop() {
 
 			if tc.expPass {
 				suite.Require().NoError(err)
-            } else {
-                if err != nil {
-                    return
-                }
-            }
-                
+			} else {
+				if err != nil {
+					return
+				}
+			}
+
 			err = suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenAck(
 				suite.A().Chain.GetContext(),
 				suite.A().ChannelConfig.PortID,
@@ -331,12 +320,12 @@ func (suite *MultihopTestSuite) TestChanOpenConfirmMultihop() {
 
 			if tc.expPass {
 				suite.Require().NoError(err)
-            } else {
-                if err != nil {
-                    return
-                }
-            }
-                
+			} else {
+				if err != nil {
+					return
+				}
+			}
+
 			err = suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenConfirm(
 				suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID,
 				channelCap, proof, suite.Z().GetClientState().GetLatestHeight(),
@@ -418,12 +407,12 @@ func (suite *MultihopTestSuite) TestChanCloseConfirmMultihop() {
 
 			if tc.expPass {
 				suite.Require().NoError(err)
-            } else {
-                if err != nil {
-                    return
-                }
-            }
-                
+			} else {
+				if err != nil {
+					return
+				}
+			}
+
 			err = suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanCloseConfirm(
 				suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID,
 				channelCap,
