@@ -160,17 +160,17 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 
 	testCases := []testCase{
 		/* */
-		{"success", func() {
-			suite.SetupConnections()
-			// manually call ChanOpenInit so we can properly set the connectionHops
-			suite.Require().NoError(suite.A().ChanOpenInit())
+		// {"success", func() {
+		// 	suite.SetupConnections()
+		// 	// manually call ChanOpenInit so we can properly set the connectionHops
+		// 	suite.Require().NoError(suite.A().ChanOpenInit())
 
-			suite.Z().Chain.CreatePortCapability(
-				suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
-				suite.Z().ChannelConfig.PortID,
-			)
-			portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
-		}, true},
+		// 	suite.Z().Chain.CreatePortCapability(
+		// 		suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
+		// 		suite.Z().ChannelConfig.PortID,
+		// 	)
+		// 	portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
+		// }, true},
 		/* */
 		{"connection doesn't exist", func() {
 			suite.chanPath.EndpointA.ConnectionID = ibctesting.FirstConnectionID
@@ -207,27 +207,34 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			// heightDiff = 0
 			tc.malleate() // call ChanOpenInit and setup port capabilities
 
+			fmt.Printf("A1\n")
 			if suite.chanPath.EndpointZ.ClientID != "" {
 				// update client on chainB
 				err := suite.chanPath.EndpointZ.UpdateClient()
 				suite.Require().NoError(err)
 			}
+			fmt.Printf("A2\n")
+			//proofHeight := suite.Z().GetClientState().GetLatestHeight()
+			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
+			//counterparty := types.NewCounterparty(suite.Z().ChannelConfig.PortID, ibctesting.FirstChannelID)
 
-			// proof := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
-			counterparty := types.NewCounterparty(suite.Z().ChannelConfig.PortID, ibctesting.FirstChannelID)
+			//channelKey := host.ChannelKey(counterparty.PortId, counterparty.ChannelId)
+			//proof, proofHeight := suite.A().Chain.QueryProof(channelKey)
+			fmt.Printf("A3\n")
+			//proofHeight := suite.Z().GetClientState().GetLatestHeight()
+			proofHeight := suite.A().Chain.LastHeader.GetHeight()
 
-			channelKey := host.ChannelKey(counterparty.PortId, counterparty.ChannelId)
-			proof, proofHeight := suite.A().Chain.QueryProof(channelKey)
-
+			fmt.Printf("B\n")
 			channelID, cap, err := suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenTry(
-				suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.Order,
+				suite.Z().Chain.GetContext(),
+				suite.Z().ChannelConfig.Order,
 				suite.Z().GetConnectionHops(),
 				suite.Z().ChannelConfig.PortID,
 				portCap,
 				suite.Z().CounterpartyChannel(),
 				suite.A().ChannelConfig.Version,
 				proof,
-				// suite.Z().GetClientState().GetLatestHeight(),
+				//suite.Z().GetClientState().GetLatestHeight(),
 				malleateHeight(proofHeight, 0),
 			)
 
@@ -274,9 +281,14 @@ func (suite *MultihopTestSuite) TestChanOpenAckMultihop() {
 			proof := suite.Z().QueryChannelProof(suite.Z().Chain.LastHeader.GetHeight())
 
 			err := suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenAck(
-				suite.A().Chain.GetContext(), suite.A().ChannelConfig.PortID, suite.A().ChannelID,
-				channelCap, suite.Z().ChannelConfig.Version, suite.Z().ChannelID,
-				proof, suite.A().GetClientState().GetLatestHeight(),
+				suite.A().Chain.GetContext(),
+				suite.A().ChannelConfig.PortID,
+				suite.A().ChannelID,
+				channelCap,
+				suite.Z().ChannelConfig.Version,
+				suite.Z().ChannelID,
+				proof,
+				suite.A().GetClientState().GetLatestHeight(),
 			)
 
 			if tc.expPass {

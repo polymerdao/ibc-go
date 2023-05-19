@@ -284,17 +284,19 @@ func (chain *TestChain) QueryMaximumProofHeight(
 		maxKeyHeightLimit = chain.LastHeader.GetHeight()
 	}
 
+	fmt.Printf("D1 maxKeyHeightLimit=%v\n", maxKeyHeightLimit)
 	// TODO: implement a query method to do this logic
 	initialValue := chain.QueryStateForStore(exported.StoreKey, key, int64(minKeyHeight.GetRevisionHeight()))
 	height := minKeyHeight.Increment()
 	for {
+		fmt.Printf("height=%v\n", height)
 		value := chain.QueryStateForStore(exported.StoreKey, key, int64(height.GetRevisionHeight()))
-		if !bytes.Equal(value, initialValue) || height.EQ(maxKeyHeightLimit) {
+		if !bytes.Equal(value, initialValue) || height.GTE(maxKeyHeightLimit) {
 			break
 		}
 		height = height.Increment()
 	}
-
+	fmt.Printf("D2\n")
 	return height
 }
 

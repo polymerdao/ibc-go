@@ -29,11 +29,11 @@ func (suite *MultihopTestSuite) SetupTest() {
 	coord, paths := ibctesting.CreateLinkedChains(&suite.Suite, 5)
 	suite.chanPath = paths.ToPathM()
 	suite.coord = &ibctesting.CoordinatorM{Coordinator: coord}
-	suite.chainA = suite.coord.GetChain(ibctesting.GetChainID(1))
-	suite.chainB = suite.coord.GetChain(ibctesting.GetChainID(2))
+	//suite.chainA = suite.coord.GetChain(ibctesting.GetChainID(1))
+	//suite.chainB = suite.coord.GetChain(ibctesting.GetChainID(2))
 	// commit some blocks so that QueryProof returns valid proof (cannot return valid query if height <= 1)
-	suite.coord.CommitNBlocks(suite.chainA, 2)
-	suite.coord.CommitNBlocks(suite.chainB, 2)
+	//suite.coord.CommitNBlocks(suite.chainA, 2)
+	//suite.coord.CommitNBlocks(suite.chainB, 2)
 }
 
 // SetupConnections creates connections between each pair of chains in the multihop path.

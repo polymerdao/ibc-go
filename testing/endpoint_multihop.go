@@ -238,16 +238,20 @@ func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet
 }
 
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
-func (ep *EndpointM) QueryMultihopProof(key []byte, proofHeight exported.Height) []byte {
+func (ep *EndpointM) QueryMultihopProof(key []byte, proofHeight exported.Height) ([]byte, error) {
 	proof, err := ep.mChanPath.GenerateProof(key, nil, proofHeight, false)
-	require.NoError(
-		ep.Chain.T,
-		err,
-		"could not generate proof for key [%s] on chain [%s]",
-		key,
-		ep.Chain.ChainID,
-	)
-	return ep.Chain.Codec.MustMarshal(proof)
+	if err != nil {
+		return nil, err
+	}
+	//TODO: propagate error
+	// require.NoError(
+	// 	ep.Chain.T,
+	// 	err,
+	// 	"could not generate proof for key [%s] on chain [%s]",
+	// 	key,
+	// 	ep.Chain.ChainID,
+	// )
+	return ep.Chain.Codec.MustMarshal(proof), nil
 }
 
 // ProofHeight returns the proof height passed to this endpoint where the proof is generated for the counterparty chain.

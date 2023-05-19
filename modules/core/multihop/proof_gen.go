@@ -80,14 +80,17 @@ func (p ChanPath) GenerateProof(
 	}()
 
 	result = &channeltypes.MsgMultihopProofs{}
+	fmt.Printf("C1\n")
 
 	// generate proof for key on source chain at the minimum consensus height known on the counterparty chain
 	maxProofHeight := p.source().Counterparty().QueryMaximumProofHeight(key, proofHeight, nil)
+	fmt.Printf("C2\n")
 	_, consensusHeightAB, err := p.source().Counterparty().QueryMinimumConsensusHeight(proofHeight, maxProofHeight)
 	if err != nil {
 		return nil, err
 	}
 
+	fmt.Printf("C3\n")
 	result.KeyProof = queryProof(p.source(), key, val, consensusHeightAB, nil, doVerify)
 
 	proofGenFuncs := []proofGenFunc{
