@@ -162,14 +162,18 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 		/* */
 		{"success", func() {
 			suite.SetupConnections()
+			suite.chanPath.SetChannelOrdered()
 			// manually call ChanOpenInit so we can properly set the connectionHops
 			suite.Require().NoError(suite.A().ChanOpenInit())
 
 			suite.Z().Chain.CreatePortCapability(
-				suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
-				suite.Z().ChannelConfig.PortID,
+				// suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
+				// suite.Z().ChannelConfig.PortID,
+				suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper,
+				ibctesting.MockPort,
 			)
-			portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
+			// portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
+			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
 		}, true},
 		/* */
 		{"connection doesn't exist", func() {
@@ -220,11 +224,14 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			proof, proofHeight := suite.A().Chain.QueryProof(channelKey)
 
 			channelID, cap, err := suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenTry(
-				suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.Order,
+				suite.Z().Chain.GetContext(),
+				suite.Z().ChannelConfig.Order,
 				suite.Z().GetConnectionHops(),
+				// []string{suite.Z().ConnectionID},
 				suite.Z().ChannelConfig.PortID,
 				portCap,
-				suite.Z().CounterpartyChannel(),
+				// suite.Z().CounterpartyChannel(),
+				counterparty,
 				suite.A().ChannelConfig.Version,
 				proof,
 				// suite.Z().GetClientState().GetLatestHeight(),
