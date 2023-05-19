@@ -160,17 +160,17 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 
 	testCases := []testCase{
 		/* */
-		// {"success", func() {
-		// 	suite.SetupConnections()
-		// 	// manually call ChanOpenInit so we can properly set the connectionHops
-		// 	suite.Require().NoError(suite.A().ChanOpenInit())
+		{"success", func() {
+		    suite.SetupConnections()
+		    // manually call ChanOpenInit so we can properly set the connectionHops
+		    suite.Require().NoError(suite.A().ChanOpenInit())
 
-		// 	suite.Z().Chain.CreatePortCapability(
-		// 		suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
-		// 		suite.Z().ChannelConfig.PortID,
-		// 	)
-		// 	portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
-		// }, true},
+		    suite.Z().Chain.CreatePortCapability(
+		        suite.Z().Chain.GetSimApp().ScopedIBCKeeper,
+		        suite.Z().ChannelConfig.PortID,
+		    )
+		    portCap = suite.Z().Chain.GetPortCapability(suite.Z().ChannelConfig.PortID)
+		}, true},
 		/* */
 		{"connection doesn't exist", func() {
 			suite.chanPath.EndpointA.ConnectionID = ibctesting.FirstConnectionID
@@ -216,6 +216,15 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			fmt.Printf("A2\n")
 			//proofHeight := suite.Z().GetClientState().GetLatestHeight()
 			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
+
+			if tc.expPass {
+				suite.Require().NoError(err)
+            } else {
+                if err != nil {
+                    return
+                }
+            }
+                
 			//counterparty := types.NewCounterparty(suite.Z().ChannelConfig.PortID, ibctesting.FirstChannelID)
 
 			//channelKey := host.ChannelKey(counterparty.PortId, counterparty.ChannelId)
@@ -278,9 +287,17 @@ func (suite *MultihopTestSuite) TestChanOpenAckMultihop() {
 			suite.SetupTest() // reset
 			tc.malleate()     // call ChanOpenInit and setup port capabilities
 
-			proof := suite.Z().QueryChannelProof(suite.Z().Chain.LastHeader.GetHeight())
+			proof, err := suite.Z().QueryChannelProof(suite.Z().Chain.LastHeader.GetHeight())
 
-			err := suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenAck(
+			if tc.expPass {
+				suite.Require().NoError(err)
+            } else {
+                if err != nil {
+                    return
+                }
+            }
+                
+			err = suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenAck(
 				suite.A().Chain.GetContext(),
 				suite.A().ChannelConfig.PortID,
 				suite.A().ChannelID,
@@ -324,9 +341,17 @@ func (suite *MultihopTestSuite) TestChanOpenConfirmMultihop() {
 			suite.SetupTest() // reset
 			tc.malleate()     // call ChanOpenInit and setup port capabilities
 
-			proof := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
+			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
 
-			err := suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenConfirm(
+			if tc.expPass {
+				suite.Require().NoError(err)
+            } else {
+                if err != nil {
+                    return
+                }
+            }
+                
+			err = suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenConfirm(
 				suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID,
 				channelCap, proof, suite.Z().GetClientState().GetLatestHeight(),
 			)
@@ -403,9 +428,17 @@ func (suite *MultihopTestSuite) TestChanCloseConfirmMultihop() {
 
 			tc.malleate()
 
-			proof := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
+			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
 
-			err := suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanCloseConfirm(
+			if tc.expPass {
+				suite.Require().NoError(err)
+            } else {
+                if err != nil {
+                    return
+                }
+            }
+                
+			err = suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanCloseConfirm(
 				suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID,
 				channelCap,
 				proof, suite.Z().GetClientState().GetLatestHeight(),
