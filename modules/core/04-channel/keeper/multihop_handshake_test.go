@@ -155,7 +155,6 @@ func (suite *MultihopTestSuite) TestChanOpenInit() {
 func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 	var (
 		portCap *capabilitytypes.Capability
-		// heightDiff uint64
 	)
 
 	testCases := []testCase{
@@ -204,17 +203,14 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 		tc := tc
 		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
 			suite.SetupTest() // reset
-			// heightDiff = 0
 			tc.malleate() // call ChanOpenInit and setup port capabilities
 
-			fmt.Printf("A1\n")
 			if suite.chanPath.EndpointZ.ClientID != "" {
 				// update client on chainB
 				err := suite.chanPath.EndpointZ.UpdateClient()
 				suite.Require().NoError(err)
 			}
-			fmt.Printf("A2\n")
-			//proofHeight := suite.Z().GetClientState().GetLatestHeight()
+
 			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
 
 			if tc.expPass {
@@ -225,15 +221,6 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
                 }
             }
                 
-			//counterparty := types.NewCounterparty(suite.Z().ChannelConfig.PortID, ibctesting.FirstChannelID)
-
-			//channelKey := host.ChannelKey(counterparty.PortId, counterparty.ChannelId)
-			//proof, proofHeight := suite.A().Chain.QueryProof(channelKey)
-			fmt.Printf("A3\n")
-			//proofHeight := suite.Z().GetClientState().GetLatestHeight()
-			proofHeight := suite.A().Chain.LastHeader.GetHeight()
-
-			fmt.Printf("B\n")
 			channelID, cap, err := suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.ChanOpenTry(
 				suite.Z().Chain.GetContext(),
 				suite.Z().ChannelConfig.Order,
@@ -243,8 +230,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 				suite.Z().CounterpartyChannel(),
 				suite.A().ChannelConfig.Version,
 				proof,
-				//suite.Z().GetClientState().GetLatestHeight(),
-				malleateHeight(proofHeight, 0),
+				suite.Z().GetClientState().GetLatestHeight(),
 			)
 
 			if tc.expPass {
