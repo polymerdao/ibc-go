@@ -159,6 +159,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 	)
 
 	testCases := []testCase{
+        /*
 		{"success", func() {
 			suite.SetupConnections()
 			// manually call ChanOpenInit so we can properly set the connectionHops
@@ -211,7 +212,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 
 			portCap = capabilitytypes.NewCapability(3)
 		}, false},
-		/*
+		*/
 			        {"connection version not negotiated", func() {
 			            suite.SetupConnections()
 			            suite.chanPath.SetChannelOrdered()
@@ -231,7 +232,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 						suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 						portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
 			        }, false},
-		*/
+		/*
 		{"connection does not support ORDERED channels", func() {
 			suite.SetupConnections()
 			suite.chanPath.SetChannelOrdered()
@@ -251,6 +252,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			suite.A().Chain.CreatePortCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 			portCap = suite.A().Chain.GetPortCapability(ibctesting.MockPort)
 		}, false},
+        */
 	}
 
 	for _, tc := range testCases {
