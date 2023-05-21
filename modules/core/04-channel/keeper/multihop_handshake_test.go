@@ -154,7 +154,8 @@ func (suite *MultihopTestSuite) TestChanOpenInit() {
 // ChanOpenTryMultihop can succeed.
 func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 	var (
-		portCap *capabilitytypes.Capability
+		portCap    *capabilitytypes.Capability
+		heightDiff uint64
 	)
 
 	testCases := []testCase{
@@ -186,79 +187,78 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			err := suite.chanPath.EndpointZ.ConnOpenInit()
 			suite.Require().NoError(err)
 		}, false},
-        /*
-        {"consensus state not found", func() {
-            suite.coordinator.SetupConnections(path)
-            path.SetChannelOrdered()
-            err := path.EndpointA.ChanOpenInit()
-            suite.Require().NoError(err)
+		{"consensus state not found", func() {
+			suite.SetupConnections()
+			suite.chanPath.SetChannelOrdered()
+			err := suite.A().ChanOpenInit()
+			suite.Require().NoError(err)
 
 			suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
 
-            heightDiff = 3 // consensus state doesn't exist at this height
-        }, false},
-        */
-        {"channel verification failed", func() {
-            // not creating a channel on chainA will result in an invalid proof of existence
-            suite.SetupConnections()
+			heightDiff = 3 // consensus state doesn't exist at this height
+		}, false},
+		{"channel verification failed", func() {
+			// not creating a channel on chainA will result in an invalid proof of existence
+			suite.SetupConnections()
 			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
-        }, false},
-        {"port capability not found", func() {
-            suite.SetupConnections()
-            suite.chanPath.SetChannelOrdered()
-            err := suite.A().ChanOpenInit()
-            suite.Require().NoError(err)
+		}, false},
+		{"port capability not found", func() {
+			suite.SetupConnections()
+			suite.chanPath.SetChannelOrdered()
+			err := suite.A().ChanOpenInit()
+			suite.Require().NoError(err)
 
-            portCap = capabilitytypes.NewCapability(3)
-        }, false},
-        /*
-        {"connection version not negotiated", func() {
-            suite.SetupConnections()
-            suite.chanPath.SetChannelOrdered()
-            err := suite.A().ChanOpenInit()
-            suite.Require().NoError(err)
+			portCap = capabilitytypes.NewCapability(3)
+		}, false},
+		/*
+			        {"connection version not negotiated", func() {
+			            suite.SetupConnections()
+			            suite.chanPath.SetChannelOrdered()
+			            err := suite.A().ChanOpenInit()
+			            suite.Require().NoError(err)
 
-            // modify connZ versions
-			conn := suite.chanPath.EndpointZ.GetConnection()
+			            // modify connZ versions
+						conn := suite.chanPath.EndpointZ.GetConnection()
 
-            version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
-            conn.Versions = append(conn.Versions, version)
+			            version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
+			            conn.Versions = append(conn.Versions, version)
 
-            suite.Z().Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
-                suite.Z().Chain.GetContext(),
-                suite.chanPath.EndpointZ.ConnectionID, conn,
-            )
-			suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
-			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
-        }, false},
-        */
-        {"connection does not support ORDERED channels", func() {
-            suite.SetupConnections()
-            suite.chanPath.SetChannelOrdered()
-            err := suite.A().ChanOpenInit()
-            suite.Require().NoError(err)
+			            suite.Z().Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
+			                suite.Z().Chain.GetContext(),
+			                suite.chanPath.EndpointZ.ConnectionID, conn,
+			            )
+						suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
+						portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
+			        }, false},
+		*/
+		{"connection does not support ORDERED channels", func() {
+			suite.SetupConnections()
+			suite.chanPath.SetChannelOrdered()
+			err := suite.A().ChanOpenInit()
+			suite.Require().NoError(err)
 
-            // modify connA versions to only support UNORDERED channels
-            conn := suite.chanPath.EndpointA.GetConnection()
+			// modify connA versions to only support UNORDERED channels
+			conn := suite.chanPath.EndpointA.GetConnection()
 
-            version := connectiontypes.NewVersion("1", []string{"ORDER_UNORDERED"})
-            conn.Versions = []*connectiontypes.Version{version}
+			version := connectiontypes.NewVersion("1", []string{"ORDER_UNORDERED"})
+			conn.Versions = []*connectiontypes.Version{version}
 
-            suite.A().Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
-                suite.A().Chain.GetContext(),
-                suite.chanPath.EndpointA.ConnectionID, conn,
-            )
+			suite.A().Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
+				suite.A().Chain.GetContext(),
+				suite.chanPath.EndpointA.ConnectionID, conn,
+			)
 			suite.A().Chain.CreatePortCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 			portCap = suite.A().Chain.GetPortCapability(ibctesting.MockPort)
-        }, false},
+		}, false},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
 		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
 			suite.SetupTest() // reset
-			tc.malleate()     // call ChanOpenInit and setup port capabilities
+			heightDiff = 0
+			tc.malleate() // call ChanOpenInit and setup port capabilities
 
 			if suite.chanPath.EndpointZ.ClientID != "" {
 				// update client on chainB
@@ -285,7 +285,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 				suite.Z().CounterpartyChannel(),
 				suite.A().ChannelConfig.Version,
 				proof,
-				suite.Z().GetClientState().GetLatestHeight(),
+				malleateHeight(suite.Z().GetClientState().GetLatestHeight(), heightDiff),
 			)
 
 			if tc.expPass {
