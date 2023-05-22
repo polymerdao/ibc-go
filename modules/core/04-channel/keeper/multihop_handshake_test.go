@@ -220,14 +220,14 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			            suite.Require().NoError(err)
 
 			            // modify connZ versions
-						conn := suite.chanPath.EndpointZ.GetConnection()
+						conn := suite.A().Counterparty.GetConnection()
 
 			            version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
 			            conn.Versions = append(conn.Versions, version)
 
-			            suite.Z().Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
-			                suite.Z().Chain.GetContext(),
-			                suite.chanPath.EndpointZ.ConnectionID, conn,
+			            suite.A().Counterparty.Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
+			                suite.A().Counterparty.Chain.GetContext(),
+			                suite.A().Counterparty.ConnectionID, conn,
 			            )
 						suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 						portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
