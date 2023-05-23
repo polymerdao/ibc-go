@@ -159,7 +159,6 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 	)
 
 	testCases := []testCase{
-        /*
 		{"success", func() {
 			suite.SetupConnections()
 			// manually call ChanOpenInit so we can properly set the connectionHops
@@ -212,29 +211,27 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 
 			portCap = capabilitytypes.NewCapability(3)
 		}, false},
-		*/
-			        {"connection version not negotiated", func() {
-			            suite.SetupConnections()
-			            suite.chanPath.SetChannelOrdered()
-			            err := suite.A().ChanOpenInit()
-			            suite.Require().NoError(err)
+		{"connection version not negotiated", func() {
+			suite.SetupConnections()
+			suite.chanPath.SetChannelOrdered()
+			err := suite.A().ChanOpenInit()
+			suite.Require().NoError(err)
 
-			            // modify connZ versions
-                        // chain := suite.chanPath.EndpointZ.Paths[3].EndpointA
-                        chain := suite.chanPath.EndpointA.Paths[0].EndpointB
-						conn := chain.GetConnection()
+			// modify connZ versions
+            chain := suite.chanPath.EndpointA.Paths[0].EndpointB
+			conn := chain.GetConnection()
 
-			            version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
-			            conn.Versions = append(conn.Versions, version)
+			version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
+			conn.Versions = append(conn.Versions, version)
 
-			            chain.Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
-			                chain.Chain.GetContext(),
-			                chain.ConnectionID, conn,
-			            )
-						suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
-						portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
-			        }, false},
-		/*
+			chain.Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
+			    chain.Chain.GetContext(),
+			    chain.ConnectionID, conn,
+			)
+
+			suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
+			portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
+		}, false},
 		{"connection does not support ORDERED channels", func() {
 			suite.SetupConnections()
 			suite.chanPath.SetChannelOrdered()
@@ -254,7 +251,6 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			suite.A().Chain.CreatePortCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 			portCap = suite.A().Chain.GetPortCapability(ibctesting.MockPort)
 		}, false},
-        */
 	}
 
 	for _, tc := range testCases {
@@ -271,8 +267,6 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			}
 
 			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
-
-            fmt.Printf("last header height = %v\n", suite.A().Chain.LastHeader.GetHeight())
 
 			if tc.expPass {
 				suite.Require().NoError(err)
@@ -293,25 +287,6 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 				proof,
 				malleateHeight(suite.Z().GetClientState().GetLatestHeight(), heightDiff),
 			)
-
-            ////
-
-            var mProof types.MsgMultihopProofs
-            suite.Require().NoError(suite.A().Chain.Codec.Unmarshal(proof, &mProof))
-
-            for i, p := range mProof.ConnectionProofs {
-
-                var connectionEnd types.ConnectionEnd
-                suite.Require().NoError((suite.A().Chain.Codec.Unmarshal(p.Value, &connectionEnd)))
-                fmt.Printf("i=%d connectionEnd=%v\n", i, connectionEnd)
-            }
-
-            multihopConnectionEnd, err := mProof.GetMultihopConnectionEnd(suite.A().Chain.Codec)
-            suite.Require().NoError(err)
-
-            fmt.Printf("multihopConnectionEnd: %v\n", multihopConnectionEnd.Versions)
-
-            ////
 
 			if tc.expPass {
 				suite.Require().NoError(err)
