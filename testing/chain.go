@@ -236,7 +236,7 @@ func (chain *TestChain) QueryStateAtHeight(key []byte, height int64) []byte {
 //	The first returned height is the processed height for a consensusState.
 //	The second returned height is the minimum consensusState height falling within the provided height range.
 //	The third returned parameter is a boolean indicating whether a client update is required.
-func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minHeight exported.Height, maxHeight exported.Height) (exported.Height, exported.Height, bool, error) {
+func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minConsensusHeight exported.Height, maxConsensusHeight exported.Height) (exported.Height, exported.Height, bool, error) {
 
 	req := clienttypes.QueryConsensusStatesRequest{
 		ClientId: clientID,
@@ -250,9 +250,9 @@ func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minHeight e
 	// search consensusStates to find the one with the minimum height in [minHeight, maxHeight]
 	var consensusHeight clienttypes.Height
 	for _, cs := range resp.ConsensusStates {
-		if cs.Height.GTE(minHeight) {
-			if maxHeight == nil || (maxHeight != nil && cs.Height.LTE(maxHeight)) {
-				if consensusHeight.IsZero() || cs.Height.LT(consensusHeight) {
+		if cs.Height.GTE(minConsensusHeight) {
+			if maxConsensusHeight == nil || (maxConsensusHeight != nil && cs.Height.LTE(maxConsensusHeight)) {
+				if consensusHeight.IsZero() || cs.Height.LTE(consensusHeight) {
 					consensusHeight = cs.Height
 				}
 			}
@@ -261,7 +261,7 @@ func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minHeight e
 
 	// no consensusState found, client update needed
 	if consensusHeight.IsZero() {
-		return nil, nil, true, nil
+		return nil, nil, true, nil // TODO: use error type to indicate when to try client update?
 	}
 
 	key := host.FullClientKey(clientID, ibctm.ProcessedHeightKey(&consensusHeight))
@@ -271,8 +271,9 @@ func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minHeight e
 		return nil, nil, false, err
 	}
 
+	// debug code
 	// fmt.Printf("Minimum proof height is %v on chain %s for consensus height: %v [minHeight=%v, maxHeight=%v]\n",
-	// 	proofHeight, chain.ChainID, consensusHeight, minHeight, maxHeight)
+	// 	proofHeight, chain.ChainID, consensusHeight, minConsensusHeight, maxConsensusHeight)
 	return proofHeight, consensusHeight, false, nil
 }
 
@@ -288,7 +289,7 @@ func (chain *TestChain) QueryMaximumProofHeight(
 		maxKeyHeightLimit = chain.LastHeader.GetHeight()
 	}
 
-	// TODO: implement a query method to do this logic
+	// TODO: implement a query method to optimize this logic?
 	initialValue := chain.QueryStateForStore(exported.StoreKey, key, int64(minKeyHeight.GetRevisionHeight()))
 	height := minKeyHeight.Increment()
 	for {
@@ -334,6 +335,7 @@ func (chain *TestChain) QueryStateForStore(storeKey string, key []byte, height i
 		Data:   key,
 		Prove:  false,
 	})
+
 	return res.Value
 }
 
