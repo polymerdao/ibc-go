@@ -218,7 +218,7 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			suite.Require().NoError(err)
 
 			// modify connZ versions
-            chain := suite.chanPath.EndpointA.Paths[0].EndpointB
+            chain := suite.A().Endpoint.Counterparty
 			conn := chain.GetConnection()
 
 			version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
