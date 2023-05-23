@@ -15,7 +15,7 @@ type CoordinatorM struct {
 // SetupClients is a helper function to create clients on both chains. It assumes the
 // caller does not anticipate any errors.
 func (coord *CoordinatorM) SetupClients(path *PathM) {
-	for _, path := range path.EndpointA.paths {
+	for _, path := range path.EndpointA.Paths {
 		path := path
 		require.Empty(coord.T, path.EndpointA.ClientID)
 		require.Empty(coord.T, path.EndpointB.ClientID)
@@ -37,8 +37,8 @@ func (coord *CoordinatorM) SetupChannels(path *PathM) {
 // Prerequisite: none of clients or connections has been created.
 func (coord *CoordinatorM) SetupConnections(path *PathM) {
 	// EndpointA and EndpointZ keeps opposite views of the same connections. So it's sufficient to just create
-	// connections on EndpointA.paths.
-	for _, path := range path.EndpointA.paths {
+	// connections on EndpointA.Paths.
+	for _, path := range path.EndpointA.Paths {
 		path := path
 		require.Empty(coord.T, path.EndpointA.ClientID)
 		require.Empty(coord.T, path.EndpointB.ClientID)

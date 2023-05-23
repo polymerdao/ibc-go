@@ -16,9 +16,9 @@ import (
 // EndpointM represents a multihop channel endpoint.
 // It includes all intermediate endpoints in the linked paths.
 // Invariants:
-//   - paths[0].A == this.Endpoint
-//   - paths[len(paths)-1].B == this.Counterparty
-//   - self.paths.Reverse() == self.Counterparty.paths
+//   - Paths[0].A == this.Endpoint
+//   - Paths[len(Paths)-1].B == this.Counterparty
+//   - self.Paths.Reverse() == self.Counterparty.Paths
 //
 // None of the fields should be changed after creation.
 type EndpointM struct {
@@ -27,24 +27,24 @@ type EndpointM struct {
 
 	// a list of single-hop Paths that are linked together,
 	// eg. for chains {A,B,C,D} the linked paths would be Link{AB, BC, CD}
-	paths     LinkedPaths
+	Paths     LinkedPaths
 	mChanPath multihop.ChanPath
 }
 
 // NewEndpointMFromLinkedPaths constructs a new EndpointM without the counterparty.
 // CONTRACT: the counterparty EndpointM must be set by the caller.
 func NewEndpointMFromLinkedPaths(path LinkedPaths) (A, Z EndpointM) {
-	A.paths = path
-	A.Endpoint = A.paths.A()
+	A.Paths = path
+	A.Endpoint = A.Paths.A()
 	A.Counterparty = &Z
 
-	Z.paths = path.Reverse()
-	Z.Endpoint = Z.paths.A()
+	Z.Paths = path.Reverse()
+	Z.Endpoint = Z.Paths.A()
 	Z.Counterparty = &A
 
 	// create multihop channel paths
-	A.mChanPath = A.paths.ToMultihopChanPath()
-	Z.mChanPath = Z.paths.ToMultihopChanPath()
+	A.mChanPath = A.Paths.ToMultihopChanPath()
+	Z.mChanPath = Z.Paths.ToMultihopChanPath()
 	return A, Z
 }
 

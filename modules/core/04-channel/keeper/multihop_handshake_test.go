@@ -220,14 +220,16 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 			            suite.Require().NoError(err)
 
 			            // modify connZ versions
-						conn := suite.A().Counterparty.GetConnection()
+                        // chain := suite.chanPath.EndpointZ.Paths[3].EndpointA
+                        chain := suite.chanPath.EndpointA.Paths[0].EndpointB
+						conn := chain.GetConnection()
 
 			            version := connectiontypes.NewVersion("7", []string{"ORDER_ORDERED", "ORDER_UNORDERED"})
 			            conn.Versions = append(conn.Versions, version)
 
-			            suite.A().Counterparty.Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
-			                suite.A().Counterparty.Chain.GetContext(),
-			                suite.A().Counterparty.ConnectionID, conn,
+			            chain.Chain.App.GetIBCKeeper().ConnectionKeeper.SetConnection(
+			                chain.Chain.GetContext(),
+			                chain.ConnectionID, conn,
 			            )
 						suite.Z().Chain.CreatePortCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, ibctesting.MockPort)
 						portCap = suite.Z().Chain.GetPortCapability(ibctesting.MockPort)
@@ -270,6 +272,8 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 
 			proof, err := suite.A().QueryChannelProof(suite.A().Chain.LastHeader.GetHeight())
 
+            fmt.Printf("last header height = %v\n", suite.A().Chain.LastHeader.GetHeight())
+
 			if tc.expPass {
 				suite.Require().NoError(err)
 			} else {
@@ -289,6 +293,25 @@ func (suite *MultihopTestSuite) TestChanOpenTryMultihop() {
 				proof,
 				malleateHeight(suite.Z().GetClientState().GetLatestHeight(), heightDiff),
 			)
+
+            ////
+
+            var mProof types.MsgMultihopProofs
+            suite.Require().NoError(suite.A().Chain.Codec.Unmarshal(proof, &mProof))
+
+            for i, p := range mProof.ConnectionProofs {
+
+                var connectionEnd types.ConnectionEnd
+                suite.Require().NoError((suite.A().Chain.Codec.Unmarshal(p.Value, &connectionEnd)))
+                fmt.Printf("i=%d connectionEnd=%v\n", i, connectionEnd)
+            }
+
+            multihopConnectionEnd, err := mProof.GetMultihopConnectionEnd(suite.A().Chain.Codec)
+            suite.Require().NoError(err)
+
+            fmt.Printf("multihopConnectionEnd: %v\n", multihopConnectionEnd.Versions)
+
+            ////
 
 			if tc.expPass {
 				suite.Require().NoError(err)
