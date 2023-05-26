@@ -187,6 +187,90 @@ func (ep *EndpointM) SendPacket(
 	return &packet, ep.Chain.LastHeader.GetHeight(), nil
 }
 
+func (ep *EndpointM) SendPacketWithInvalidDestPortDestChannel(
+	timeoutHeight clienttypes.Height,
+	timeoutTimestamp uint64,
+	data []byte,
+) (*channeltypes.Packet, exported.Height, error) {
+	portID, channelID := ep.ChannelConfig.PortID, ep.ChannelID
+	channelCap := ep.Chain.GetChannelCapability(portID, channelID)
+
+	seq, err := ep.Chain.App.GetIBCKeeper().ChannelKeeper.SendPacket(
+		ep.Chain.GetContext(),
+		channelCap,
+		portID, channelID,
+		timeoutHeight,
+		timeoutTimestamp,
+		data,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	ep.Chain.Coordinator.CommitBlock(ep.Chain)
+
+	packet := channeltypes.NewPacket(data, seq, portID, channelID,
+		InvalidID, InvalidID,
+		timeoutHeight, timeoutTimestamp,
+	)
+	return &packet, ep.Chain.LastHeader.GetHeight(), nil
+}
+
+func (ep *EndpointM) SendPacketWithInvalidSourcePort(
+	timeoutHeight clienttypes.Height,
+	timeoutTimestamp uint64,
+	data []byte,
+) (*channeltypes.Packet, exported.Height, error) {
+	portID, channelID := ep.ChannelConfig.PortID, ep.ChannelID
+	channelCap := ep.Chain.GetChannelCapability(portID, channelID)
+
+	seq, err := ep.Chain.App.GetIBCKeeper().ChannelKeeper.SendPacket(
+		ep.Chain.GetContext(),
+		channelCap,
+		portID, channelID,
+		timeoutHeight,
+		timeoutTimestamp,
+		data,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	ep.Chain.Coordinator.CommitBlock(ep.Chain)
+
+	packet := channeltypes.NewPacket(data, seq, InvalidID, channelID,
+		ep.Counterparty.ChannelConfig.PortID, ep.Counterparty.ChannelID,
+		timeoutHeight, timeoutTimestamp,
+	)
+	return &packet, ep.Chain.LastHeader.GetHeight(), nil
+}
+
+func (ep *EndpointM) SendPacketWithInvalidSourceChannel(
+	timeoutHeight clienttypes.Height,
+	timeoutTimestamp uint64,
+	data []byte,
+) (*channeltypes.Packet, exported.Height, error) {
+	portID, channelID := ep.ChannelConfig.PortID, ep.ChannelID
+	channelCap := ep.Chain.GetChannelCapability(portID, channelID)
+
+	seq, err := ep.Chain.App.GetIBCKeeper().ChannelKeeper.SendPacket(
+		ep.Chain.GetContext(),
+		channelCap,
+		portID, channelID,
+		timeoutHeight,
+		timeoutTimestamp,
+		data,
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	ep.Chain.Coordinator.CommitBlock(ep.Chain)
+
+	packet := channeltypes.NewPacket(data, seq, portID, InvalidID,
+		ep.Counterparty.ChannelConfig.PortID, ep.Counterparty.ChannelID,
+		timeoutHeight, timeoutTimestamp,
+	)
+	return &packet, ep.Chain.LastHeader.GetHeight(), nil
+}
+
 // RecvPacket receives a packet on the associated EndpointM.
 // The counterparty and all intermediate chains' clients are updated.
 func (ep *EndpointM) RecvPacket(packet *channeltypes.Packet, proofHeight exported.Height) error {
