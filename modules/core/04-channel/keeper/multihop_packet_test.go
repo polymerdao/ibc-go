@@ -283,6 +283,34 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			channelCap = suite.Z().Chain.GetChannelCapability(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
 		}, false},
 	}
+	testCases = []channelTestCase{
+		{"next receive sequence is not found", false, func() {
+			expError = types.ErrSequenceReceiveNotFound
+
+			suite.SetupConnections()
+
+			suite.A().ChannelID = ibctesting.FirstChannelID
+			suite.Z().ChannelID = ibctesting.FirstChannelID
+
+			// manually creating channel prevents next recv sequence from being set
+			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.A().ChannelConfig.PortID, suite.A().ChannelID), []string{suite.Z().ConnectionID}, suite.Z().ChannelConfig.Version)
+			suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, channel)
+
+			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
+
+			// manually set packet commitment
+			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetPacketCommitment(suite.A().Chain.GetContext(), suite.A().ChannelConfig.PortID, suite.A().ChannelID, packet.GetSequence(), types.CommitPacket(suite.A().Chain.App.AppCodec(), packet))
+			packetHeight = suite.A().Chain.LastHeader.GetHeight()
+
+			suite.Z().Chain.CreateChannelCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
+			channelCap = suite.Z().Chain.GetChannelCapability(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
+
+			err = suite.A().UpdateClient()
+			suite.Require().NoError(err)
+			err = suite.Z().UpdateClient()
+			suite.Require().NoError(err)
+		}, false},
+	}
 
 	packet = &types.Packet{}
 
