@@ -346,7 +346,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 					suite.Require().False(receiptStored, "packet receipt stored in ORDERED channel")
 				} else {
 					suite.Require().True(channelZ.Ordering == types.UNORDERED)
-					// suite.Require().Equal(nextSeqRecv, packet.GetSequence(), "sequence incremented in UNORDERED channel")
 					suite.Require().Equal(uint64(1), nextSeqRecv, "sequence incremented in UNORDERED channel")
 					suite.Require().True(receiptStored, "packet receipt not stored in UNORDERED channel")
 					suite.Require().Equal(string([]byte{byte(1)}), receipt, "packet receipt not stored in UNORDERED channel")
