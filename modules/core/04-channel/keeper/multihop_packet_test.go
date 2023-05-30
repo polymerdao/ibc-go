@@ -206,10 +206,7 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.A().ChannelConfig.PortID, suite.A().ChannelID), suite.Z().GetConnectionHops(), suite.Z().ChannelConfig.Version)
 			suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, channel)
 			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
-			// packetHeight = suite.A().Chain.LastHeader.GetHeight()
-			// fmt.Printf("packetHeight = %v\n", packetHeight)
-			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
-			// fmt.Printf("packetHeight = %v\n", packetHeight)
+			packetHeight = suite.A().Chain.LastHeader.GetHeight()
 
 			suite.Z().Chain.CreateChannelCapability(suite.Z().Chain.GetSimApp().ScopedIBCMockKeeper, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
 			channelCap = suite.Z().Chain.GetChannelCapability(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
@@ -356,7 +353,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 				}
 			} else {
 				suite.Require().Error(err)
-				// fmt.Printf("err = %v\n", err)
 
 				// only check if expError is set, since not all error codes can be known
 				if expError != nil {
