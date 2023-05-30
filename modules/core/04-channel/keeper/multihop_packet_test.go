@@ -198,7 +198,7 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			suite.Require().NoError(err)
 
 			// pass channel check
-			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.A().ChannelConfig.PortID, suite.A().ChannelID), []string{suite.Z().ConnectionID}, suite.Z().ChannelConfig.Version)
+			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.A().ChannelConfig.PortID, suite.A().ChannelID), suite.Z().GetConnectionHops(), suite.Z().ChannelConfig.Version)
 			suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, channel)
 			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
 			// packetHeight = suite.A().Chain.LastHeader.GetHeight()
@@ -233,7 +233,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 				suite.Z().ChannelConfig.PortID, suite.Z().ChannelID,
 			)
 		}, false},
-/*
 		{"next receive sequence is not found", false, func() {
 			expError = types.ErrSequenceReceiveNotFound
 
@@ -243,7 +242,7 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			suite.Z().ChannelID = ibctesting.FirstChannelID
 
 			// manually creating channel prevents next recv sequence from being set
-			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.A().ChannelConfig.PortID, suite.A().ChannelID), []string{suite.Z().ConnectionID}, suite.Z().ChannelConfig.Version)
+			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.A().ChannelConfig.PortID, suite.A().ChannelID), suite.Z().GetConnectionHops(), suite.Z().ChannelConfig.Version)
 			suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, channel)
 
 			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
@@ -260,7 +259,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			err = suite.Z().UpdateClient()
 			suite.Require().NoError(err)
 		}, false},
-*/
 		{"receipt already stored", false, func() {
 			expError = types.ErrNoOpMsg
 			suite.SetupChannels()
