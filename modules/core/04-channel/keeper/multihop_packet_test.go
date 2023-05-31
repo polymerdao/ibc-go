@@ -410,7 +410,7 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
 			)
 
-			err = suite.A().AcknowledgePacket(*packet, ack.Acknowledgement())
+			err = suite.A().AcknowledgePacket(*packet, packetHeight, ack.Acknowledgement())
 			suite.Require().NoError(err)
 		}, false},
 		{"packet already acknowledged unordered channel (no-op)", false, func() {
@@ -431,7 +431,7 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
 			)
 
-			err = suite.A().AcknowledgePacket(*packet, ack.Acknowledgement())
+			err = suite.A().AcknowledgePacket(*packet, packetHeight, ack.Acknowledgement())
 			suite.Require().NoError(err)
 		}, false},
 		{"channel not found", false, func() {
@@ -654,41 +654,41 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
 			)
 
-			err = suite.A().AcknowledgePacket(*packet, ack.Acknowledgement())
+			err = suite.A().AcknowledgePacket(*packet, packetHeight, ack.Acknowledgement())
 			suite.Require().NoError(err)
 		}, false},
-/*
-		{"next ack sequence not found", false, func() {
-			expError = types.ErrSequenceAckNotFound
-			suite.SetupConnections()
+		/*
+			{"next ack sequence not found", false, func() {
+				expError = types.ErrSequenceAckNotFound
+				suite.SetupConnections()
 
-			suite.A().ChannelID = ibctesting.FirstChannelID
-			suite.Z().ChannelID = ibctesting.FirstChannelID
+				suite.A().ChannelID = ibctesting.FirstChannelID
+				suite.Z().ChannelID = ibctesting.FirstChannelID
 
-			// manually creating channel prevents next sequence acknowledgement from being set
-			channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID), suite.A().GetConnectionHops(), suite.A().ChannelConfig.Version)
-			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(suite.A().Chain.GetContext(), suite.A().ChannelConfig.PortID, suite.A().ChannelID, channel)
+				// manually creating channel prevents next sequence acknowledgement from being set
+				channel := types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID), suite.A().GetConnectionHops(), suite.A().ChannelConfig.Version)
+				suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(suite.A().Chain.GetContext(), suite.A().ChannelConfig.PortID, suite.A().ChannelID, channel)
 
-			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
+				*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
 
-			// manually set packet commitment
-			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetPacketCommitment(suite.A().Chain.GetContext(), suite.A().ChannelConfig.PortID, suite.A().ChannelID, packet.GetSequence(), types.CommitPacket(suite.A().Chain.App.AppCodec(), packet))
-			packetHeight = suite.A().Chain.LastHeader.GetHeight()
+				// manually set packet commitment
+				suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetPacketCommitment(suite.A().Chain.GetContext(), suite.A().ChannelConfig.PortID, suite.A().ChannelID, packet.GetSequence(), types.CommitPacket(suite.A().Chain.App.AppCodec(), packet))
+				packetHeight = suite.A().Chain.LastHeader.GetHeight()
 
-			// manually set packet acknowledgement and capability
-			suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.SetPacketAcknowledgement(suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, packet.GetSequence(), types.CommitAcknowledgement(ack.Acknowledgement()))
+				// manually set packet acknowledgement and capability
+				suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.SetPacketAcknowledgement(suite.Z().Chain.GetContext(), suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, packet.GetSequence(), types.CommitAcknowledgement(ack.Acknowledgement()))
 
-			suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
-			channelCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
+				suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
+				channelCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 
-			suite.coord.CommitBlock(suite.A().Chain, suite.Z().Chain)
+				suite.coord.CommitBlock(suite.A().Chain, suite.Z().Chain)
 
-			err = suite.A().UpdateClient()
-			suite.Require().NoError(err)
-			err = suite.Z().UpdateClient()
-			suite.Require().NoError(err)
-		}, false},
-*/
+				err = suite.A().UpdateClient()
+				suite.Require().NoError(err)
+				err = suite.Z().UpdateClient()
+				suite.Require().NoError(err)
+			}, false},
+		*/
 	}
 
 	packet = &types.Packet{}
