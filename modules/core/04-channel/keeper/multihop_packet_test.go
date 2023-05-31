@@ -29,7 +29,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 	var (
 		packet         *types.Packet
 		packetHeight   exported.Height
-		dstProofHeight exported.Height
 		channelCap     *capabilitytypes.Capability
 		expError       *sdkerrors.Error
 		err            error
@@ -83,8 +82,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 
 			err = suite.Z().RecvPacket(packet, packetHeight)
 			suite.Require().NoError(err)
-
-			dstProofHeight = suite.Z().ProofHeight()
 		}, false},
 		{"packet already relayed UNORDERED channel (no-op)", false, func() {
 			expError = types.ErrNoOpMsg
@@ -101,8 +98,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 
 			err = suite.Z().RecvPacket(packet, packetHeight)
 			suite.Require().NoError(err)
-
-			dstProofHeight = suite.Z().ProofHeight()
 		}, false},
 		{"out of order packet failure with ORDERED channel", true, func() {
 			expError = types.ErrPacketSequenceOutOfOrder
@@ -293,7 +288,6 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
 			suite.SetupTest() // reset
 			expError = nil    // must explicitly set for failed cases
-			dstProofHeight = nil
 			if tc.orderedChannel {
 				suite.chanPath.SetChannelOrdered()
 			}
@@ -303,16 +297,12 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			proof, proofHeight, err := suite.A().QueryPacketProof(packet, packetHeight)
 			suite.Require().NoError(err)
 
-			if dstProofHeight == nil {
-				dstProofHeight = proofHeight
-			}
-
 			err = suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.RecvPacket(
 				suite.Z().Chain.GetContext(),
 				channelCap,
 				packet,
 				proof,
-				dstProofHeight,
+				proofHeight,
 			)
 
 			// assert no error
