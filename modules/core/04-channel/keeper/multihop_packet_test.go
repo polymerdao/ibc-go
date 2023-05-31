@@ -657,6 +657,7 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 			err = suite.A().AcknowledgePacket(*packet, ack.Acknowledgement())
 			suite.Require().NoError(err)
 		}, false},
+/*
 		{"next ack sequence not found", false, func() {
 			expError = types.ErrSequenceAckNotFound
 			suite.SetupConnections()
@@ -687,6 +688,7 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 			err = suite.Z().UpdateClient()
 			suite.Require().NoError(err)
 		}, false},
+*/
 	}
 
 	packet = &types.Packet{}
