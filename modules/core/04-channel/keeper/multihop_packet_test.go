@@ -304,7 +304,7 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 			suite.Require().NoError(err)
 
 			if dstProofHeight == nil {
-				dstProofHeight = suite.Z().ProofHeight()
+				dstProofHeight = proofHeight
 			}
 
 			err = suite.Z().Chain.App.GetIBCKeeper().ChannelKeeper.RecvPacket(
