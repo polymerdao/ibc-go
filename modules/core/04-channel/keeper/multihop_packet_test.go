@@ -681,7 +681,6 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 				}
 			} else {
 				suite.Require().Error(err)
-				// fmt.Printf("err = %v\n", err)
 
 				// only check if expError is set, since not all error codes can be known
 				if expError != nil {
