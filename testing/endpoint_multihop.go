@@ -1,6 +1,8 @@
 package ibctesting
 
 import (
+	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
@@ -217,6 +219,25 @@ func (endpoint *EndpointM) AcknowledgePacket(packet channeltypes.Packet, initPro
 	return endpoint.Chain.sendMsgs(ackMsg)
 }
 
+// TimeoutPacket sends a MsgTimeout to the channel associated with the endpoint.
+func (endpoint *EndpointM) TimeoutPacket(packet channeltypes.Packet, initProofHeight exported.Height) error {
+	// get proof for timeout based on channel order
+	proof, proofHeight, err := endpoint.Counterparty.QueryPacketTimeoutProof(&packet, initProofHeight)
+	if err != nil {
+		return err
+	}
+
+	nextSeqRecv, found := endpoint.Counterparty.Chain.App.GetIBCKeeper().ChannelKeeper.GetNextSequenceRecv(endpoint.Counterparty.Chain.GetContext(), endpoint.ChannelConfig.PortID, endpoint.ChannelID)
+	require.True(endpoint.Chain.T, found)
+
+	timeoutMsg := channeltypes.NewMsgTimeout(
+		packet, nextSeqRecv,
+		proof, proofHeight, endpoint.Chain.SenderAccount.GetAddress().String(),
+	)
+
+	return endpoint.Chain.sendMsgs(timeoutMsg)
+}
+
 // SetChannelClosed sets a channel state to CLOSED.
 func (ep *EndpointM) SetChannelClosed() {
 	channel := ep.GetChannel()
@@ -257,6 +278,22 @@ func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet, height export
 // QueryPacketAcknowledgementProof queries the multihop packet acknowledgement proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
+	return ep.QueryMultihopProof(packetKey, height)
+}
+
+// QueryPacketTimeoutProof queries the multihop packet timeout proof on the endpoint chain.
+func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
+	var packetKey []byte
+
+	switch ep.ChannelConfig.Order {
+	case channeltypes.ORDERED:
+		packetKey = host.NextSequenceRecvKey(packet.GetDestPort(), packet.GetDestChannel())
+	case channeltypes.UNORDERED:
+		packetKey = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
+	default:
+		return nil, height.(clienttypes.Height), fmt.Errorf("unsupported order type %s", ep.ChannelConfig.Order)
+	}
+
 	return ep.QueryMultihopProof(packetKey, height)
 }
 
