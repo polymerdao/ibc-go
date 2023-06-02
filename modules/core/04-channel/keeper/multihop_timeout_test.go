@@ -417,6 +417,8 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 
 	testCases = []timeoutTestCase{
 		{"connection not found", false, func() {
+			suite.SetupAllButTheLastConnections()
+
 			// pass channel check
 			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
 				suite.A().Chain.GetContext(),
