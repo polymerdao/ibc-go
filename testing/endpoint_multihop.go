@@ -266,19 +266,22 @@ func (ep *EndpointM) CounterpartyChannel() channeltypes.Counterparty {
 // QueryChannelProof queries the multihop channel proof on the endpoint chain.
 func (ep *EndpointM) QueryChannelProof(proofHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	channelKey := host.ChannelKey(ep.ChannelConfig.PortID, ep.ChannelID)
-	return ep.QueryMultihopProof(channelKey, proofHeight, true)
+	doUpdateClient := true
+	return ep.QueryMultihopProof(channelKey, proofHeight, doUpdateClient)
 }
 
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketCommitmentKey(packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, height, true)
+	doUpdateClient := true
+	return ep.QueryMultihopProof(packetKey, height, doUpdateClient)
 }
 
 // QueryPacketAcknowledgementProof queries the multihop packet acknowledgement proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, height, true)
+	doUpdateClient := true
+	return ep.QueryMultihopProof(packetKey, height, doUpdateClient)
 }
 
 // QueryPacketTimeoutProof queries the multihop packet timeout proof on the endpoint chain.
@@ -294,7 +297,8 @@ func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, height
 		return nil, height.(clienttypes.Height), fmt.Errorf("unsupported order type %s", ep.ChannelConfig.Order)
 	}
 
-	return ep.QueryMultihopProof(packetKey, height, true)
+	doUpdateClient := true
+	return ep.QueryMultihopProof(packetKey, height, doUpdateClient)
 }
 
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.

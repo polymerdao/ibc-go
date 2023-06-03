@@ -224,7 +224,8 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 					// proof of absence of packet receipt
 					key = host.PacketReceiptKey(packet.SourcePort, packet.SourceChannel, packet.Sequence)
 				}
-				proof, proofHeight, err = suite.Z().QueryMultihopProof(key, packetHeight, true)
+				doUpdateClient := true
+				proof, proofHeight, err = suite.Z().QueryMultihopProof(key, packetHeight, doUpdateClient)
 				suite.Require().NoError(err)
 			}
 
@@ -418,28 +419,6 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			chanCap = capabilitytypes.NewCapability(100)
 		}, false},
 	}
-
-	// testCases = []timeoutTestCase{
-	// 	{"connection not found", false, func() {
-	// 		suite.SetupAllButTheLastConnections()
-
-	// 		//suite.SetupConnections()
-
-	// 		// pass channel check
-	// 		suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
-	// 			suite.A().Chain.GetContext(),
-	// 			suite.A().ChannelConfig.PortID, suite.A().ChannelID,
-	// 			types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID), []string{connIDA}, suite.A().ChannelConfig.Version),
-	// 		)
-	// 		*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
-
-	// 		// create chancap
-	// 		suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
-	// 		chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
-	// 		packetHeight = suite.Z().Chain.LastHeader.GetHeight()
-	// 		doUpdateClient = false
-	// 	}, false},
-	// }
 
 	packet = &types.Packet{}
 
