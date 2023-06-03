@@ -34,8 +34,8 @@ func (s *MultihopTestSuite) SetupConnections() {
 }
 
 // USED FOR TESTING ONLY!!!
-func (s *MultihopTestSuite) SetupAllButTheLastConnections() {
-	s.coord.SetupAllButTheLastConnections(s.chanPath)
+func (s *MultihopTestSuite) SetupAllButTheSpecifiedConnections(idx uint) {
+	s.coord.SetupAllButTheSpecifiedConnections(s.chanPath, idx)
 }
 
 // SetupChannels create a multihop channel after creating all its preprequisites in order, ie. clients, connections.

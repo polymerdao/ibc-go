@@ -302,7 +302,8 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 		}, false},
 		{"connection not found", false, func() {
-			suite.SetupAllButTheLastConnections()
+			connectionIdx := 0
+			suite.SetupAllButTheSpecifiedConnections(uint(connectionIdx))
 			// pass channel check
 			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
 				suite.A().Chain.GetContext(),
