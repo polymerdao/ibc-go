@@ -266,19 +266,19 @@ func (ep *EndpointM) CounterpartyChannel() channeltypes.Counterparty {
 // QueryChannelProof queries the multihop channel proof on the endpoint chain.
 func (ep *EndpointM) QueryChannelProof(proofHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	channelKey := host.ChannelKey(ep.ChannelConfig.PortID, ep.ChannelID)
-	return ep.QueryMultihopProof(channelKey, proofHeight)
+	return ep.QueryMultihopProof(channelKey, proofHeight, true)
 }
 
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketCommitmentKey(packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, height)
+	return ep.QueryMultihopProof(packetKey, height, true)
 }
 
 // QueryPacketAcknowledgementProof queries the multihop packet acknowledgement proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, height)
+	return ep.QueryMultihopProof(packetKey, height, true)
 }
 
 // QueryPacketTimeoutProof queries the multihop packet timeout proof on the endpoint chain.
@@ -294,11 +294,11 @@ func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, height
 		return nil, height.(clienttypes.Height), fmt.Errorf("unsupported order type %s", ep.ChannelConfig.Order)
 	}
 
-	return ep.QueryMultihopProof(packetKey, height)
+	return ep.QueryMultihopProof(packetKey, height, true)
 }
 
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
-func (ep *EndpointM) QueryMultihopProof(key []byte, initProofHeight exported.Height) (proof []byte, proofHeight clienttypes.Height, err error) {
+func (ep *EndpointM) QueryMultihopProof(key []byte, initProofHeight exported.Height, doUpdateClient bool) (proof []byte, proofHeight clienttypes.Height, err error) {
 
 	multiHopProof, height, err := ep.mChanPath.QueryMultihopProof(key, initProofHeight)
 	if err != nil {
@@ -313,8 +313,10 @@ func (ep *EndpointM) QueryMultihopProof(key []byte, initProofHeight exported.Hei
 	}
 
 	// ensure final client is updated
-	if err = ep.Counterparty.UpdateClient(); err != nil {
-		return
+	if doUpdateClient {
+		if err = ep.Counterparty.UpdateClient(); err != nil {
+			return
+		}
 	}
 
 	return

@@ -54,16 +54,13 @@ func (coord *CoordinatorM) SetupConnections(path *PathM) {
 func (coord *CoordinatorM) SetupAllButTheLastConnections(path *PathM) {
 	// EndpointA and EndpointZ keeps opposite views of the same connections. So it's sufficient to just create
 	// connections on EndpointA.paths.
-	last_idx := len(path.EndpointA.paths) - 1
-	for i, path := range path.EndpointA.paths {
-		if i != last_idx {
-			path := path
-			require.Empty(coord.T, path.EndpointA.ClientID)
-			require.Empty(coord.T, path.EndpointB.ClientID)
-			require.Empty(coord.T, path.EndpointA.ConnectionID)
-			require.Empty(coord.T, path.EndpointB.ConnectionID)
-			coord.Coordinator.SetupConnections(path)
-		}
+	for _, path := range path.EndpointZ.paths[:len(path.EndpointA.paths)-1] {
+		path := path
+		require.Empty(coord.T, path.EndpointA.ClientID)
+		require.Empty(coord.T, path.EndpointB.ClientID)
+		require.Empty(coord.T, path.EndpointA.ConnectionID)
+		require.Empty(coord.T, path.EndpointB.ConnectionID)
+		coord.Coordinator.SetupConnections(path)
 	}
 }
 
