@@ -331,6 +331,86 @@ func (ep *EndpointM) ProofHeight() clienttypes.Height {
 	return ep.GetClientState().GetLatestHeight().(clienttypes.Height)
 }
 
+// USED FOR TESTING ONLY!!!
+func (ep *EndpointM) SetupAllButTheSpecifiedConnection(index uint) error {
+	if index >= uint(len(ep.paths)) {
+		return fmt.Errorf("SetupAllButTheSpecifiedConnection(): invalid index paramter %d", index)
+	}
+
+	for _, path := range ep.paths[:index] {
+		path := path
+
+		err := ep.SetupClients(path)
+		if err != nil {
+			return err
+		}
+
+		err = ep.CreateConnections(path)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, path := range ep.paths[index+1:] {
+		path := path
+		err := ep.SetupClients(path)
+		if err != nil {
+			return err
+		}
+
+		err = ep.CreateConnections(path)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (ep *EndpointM) SetupClients(path *Path) error {
+	err := path.EndpointA.CreateClient()
+	if err != nil {
+		return err
+	}
+
+	err = path.EndpointB.CreateClient()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ep *EndpointM) CreateConnections(path *Path) error {
+	err := path.EndpointA.ConnOpenInit()
+	if err != nil {
+		return err
+	}
+
+	err = path.EndpointB.ConnOpenTry()
+	if err != nil {
+		return err
+	}
+
+	err = path.EndpointA.ConnOpenAck()
+	if err != nil {
+		return err
+	}
+
+	err = path.EndpointB.ConnOpenConfirm()
+	if err != nil {
+		return err
+	}
+
+	// ensure counterparty is up to date
+	err = path.EndpointA.UpdateClient()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // multihopEndpoint implements the multihop.Endpoint interface for a TestChain endpoint.
 type multihopEndpoint struct {
 	testEndpoint *Endpoint

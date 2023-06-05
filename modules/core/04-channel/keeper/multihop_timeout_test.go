@@ -303,7 +303,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 		}, false},
 		{"connection not found", false, func() {
 			connectionIdx := 0
-			suite.SetupAllButTheSpecifiedConnections(uint(connectionIdx))
+			suite.A().SetupAllButTheSpecifiedConnection(uint(connectionIdx))
 			// pass channel check
 			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
 				suite.A().Chain.GetContext(),

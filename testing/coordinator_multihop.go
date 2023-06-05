@@ -50,28 +50,6 @@ func (coord *CoordinatorM) SetupConnections(path *PathM) {
 	}
 }
 
-// USED FOR TESTING ONLY!!!
-func (coord *CoordinatorM) SetupAllButTheSpecifiedConnections(path *PathM, idx uint) {
-	// EndpointA and EndpointZ keeps opposite views of the same connections. So it's sufficient to just create
-	// connections on EndpointA.paths.
-	for _, path := range path.EndpointA.paths[:idx] {
-		path := path
-		require.Empty(coord.T, path.EndpointA.ClientID)
-		require.Empty(coord.T, path.EndpointB.ClientID)
-		require.Empty(coord.T, path.EndpointA.ConnectionID)
-		require.Empty(coord.T, path.EndpointB.ConnectionID)
-		coord.Coordinator.SetupConnections(path)
-	}
-	for _, path := range path.EndpointA.paths[idx+1:] {
-		path := path
-		require.Empty(coord.T, path.EndpointA.ClientID)
-		require.Empty(coord.T, path.EndpointB.ClientID)
-		require.Empty(coord.T, path.EndpointA.ConnectionID)
-		require.Empty(coord.T, path.EndpointB.ConnectionID)
-		coord.Coordinator.SetupConnections(path)
-	}
-}
-
 // CreateChannels constructs and executes channel handshake messages to create OPEN channels.
 // Fail test if any error occurs.
 // Prerequisite: clients and connections have been created.
