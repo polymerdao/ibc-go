@@ -248,12 +248,13 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 // channel on chainB after the packet commitment has been created.
 func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 	var (
-		packet         *types.Packet
-		packetHeight   exported.Height
-		chanCap        *capabilitytypes.Capability
-		nextSeqRecv    uint64
-		err            error
-		doUpdateClient bool
+		packet                           *types.Packet
+		packetHeight                     exported.Height
+		chanCap                          *capabilitytypes.Capability
+		nextSeqRecv                      uint64
+		err                              error
+		queryMultihopProofExpectedToFail bool
+		doUpdateClient                   bool
 	)
 
 	testCases := []timeoutTestCase{
@@ -333,6 +334,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
+			queryMultihopProofExpectedToFail = true
 			doUpdateClient = false
 		}, false},
 		{"packet hasn't been sent ORDERED", true, func() {
@@ -438,26 +440,6 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 		}, false},
 	}
 
-	testCases = []timeoutTestCase{
-		{"connection not found - scenario 2", false, func() {
-			connectionIdx := 1
-			suite.A().SetupAllButTheSpecifiedConnection(uint(connectionIdx))
-			// pass channel check
-			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
-				suite.A().Chain.GetContext(),
-				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
-				types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID), []string{connIDA}, suite.A().ChannelConfig.Version),
-			)
-			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
-
-			// create chancap
-			suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
-			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
-			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
-			doUpdateClient = false
-		}, false},
-	}
-
 	packet = &types.Packet{}
 
 	for i, tc := range testCases {
@@ -467,30 +449,37 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 
 			suite.SetupTest() // reset
 			nextSeqRecv = 1   // must be explicitly changed
+			queryMultihopProofExpectedToFail = false
 			doUpdateClient = true
 
 			tc.malleate()
 
 			channelKey := host.ChannelKey(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
-			proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight, doUpdateClient)
-			suite.Require().NoError(err)
 
-			if tc.orderedChannel {
-				key = host.NextSequenceRecvKey(packet.GetDestPort(), packet.GetDestChannel())
-			} else {
-				// proof of absence of packet receipt
-				key = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-			}
-
-			proof, proofHeight, err := suite.Z().QueryMultihopProof(key, packetHeight, doUpdateClient)
-			suite.Require().NoError(err)
-
-			err = suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.TimeoutOnClose(suite.A().Chain.GetContext(), chanCap, packet, proof, proofClosed, proofHeight, nextSeqRecv)
-
-			if tc.expPass {
-				suite.Require().NoError(err)
-			} else {
+			if queryMultihopProofExpectedToFail {
+				_, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight, doUpdateClient)
 				suite.Require().Error(err)
+			} else {
+				proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight, doUpdateClient)
+				suite.Require().NoError(err)
+
+				if tc.orderedChannel {
+					key = host.NextSequenceRecvKey(packet.GetDestPort(), packet.GetDestChannel())
+				} else {
+					// proof of absence of packet receipt
+					key = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
+				}
+
+				proof, proofHeight, err := suite.Z().QueryMultihopProof(key, packetHeight, doUpdateClient)
+				suite.Require().NoError(err)
+
+				err = suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.TimeoutOnClose(suite.A().Chain.GetContext(), chanCap, packet, proof, proofClosed, proofHeight, nextSeqRecv)
+
+				if tc.expPass {
+					suite.Require().NoError(err)
+				} else {
+					suite.Require().Error(err)
+				}
 			}
 		})
 	}
