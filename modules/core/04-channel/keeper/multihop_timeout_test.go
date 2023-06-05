@@ -301,8 +301,25 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, ibctesting.InvalidID, defaultTimeoutHeight, disabledTimeoutTimestamp)
 			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 		}, false},
-		{"connection not found", false, func() {
+		{"connection not found - scenario 1", false, func() {
 			connectionIdx := 0
+			suite.A().SetupAllButTheSpecifiedConnection(uint(connectionIdx))
+			// pass channel check
+			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
+				suite.A().Chain.GetContext(),
+				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
+				types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID), []string{connIDA}, suite.A().ChannelConfig.Version),
+			)
+			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
+
+			// create chancap
+			suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
+			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
+			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
+			doUpdateClient = false
+		}, false},
+		{"connection not found - scenario 2", false, func() {
+			connectionIdx := 1
 			suite.A().SetupAllButTheSpecifiedConnection(uint(connectionIdx))
 			// pass channel check
 			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
@@ -418,6 +435,26 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			suite.Require().NoError(err)
 
 			chanCap = capabilitytypes.NewCapability(100)
+		}, false},
+	}
+
+	testCases = []timeoutTestCase{
+		{"connection not found - scenario 2", false, func() {
+			connectionIdx := 1
+			suite.A().SetupAllButTheSpecifiedConnection(uint(connectionIdx))
+			// pass channel check
+			suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.SetChannel(
+				suite.A().Chain.GetContext(),
+				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
+				types.NewChannel(types.OPEN, types.ORDERED, types.NewCounterparty(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID), []string{connIDA}, suite.A().ChannelConfig.Version),
+			)
+			*packet = types.NewPacket(ibctesting.MockPacketData, 1, suite.A().ChannelConfig.PortID, suite.A().ChannelID, suite.Z().ChannelConfig.PortID, suite.Z().ChannelID, defaultTimeoutHeight, disabledTimeoutTimestamp)
+
+			// create chancap
+			suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
+			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
+			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
+			doUpdateClient = false
 		}, false},
 	}
 
