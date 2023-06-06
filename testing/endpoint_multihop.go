@@ -206,36 +206,36 @@ func (ep *EndpointM) RecvPacket(packet *channeltypes.Packet, initProofHeight exp
 }
 
 // AcknowledgePacket sends a MsgAcknowledgement to the channel associated with the endpoint.
-func (endpoint *EndpointM) AcknowledgePacket(packet channeltypes.Packet, initProofHeight exported.Height, ack []byte) error {
+func (ep *EndpointM) AcknowledgePacket(packet channeltypes.Packet, initProofHeight exported.Height, ack []byte) error {
 	// get proof of acknowledgement on counterparty
 	//packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-	proof, proofHeight, err := endpoint.Counterparty.QueryPacketAcknowledgementProof(&packet, initProofHeight)
+	proof, proofHeight, err := ep.Counterparty.QueryPacketAcknowledgementProof(&packet, initProofHeight)
 	if err != nil {
 		return err
 	}
 
-	ackMsg := channeltypes.NewMsgAcknowledgement(packet, ack, proof, proofHeight, endpoint.Chain.SenderAccount.GetAddress().String())
+	ackMsg := channeltypes.NewMsgAcknowledgement(packet, ack, proof, proofHeight, ep.Chain.SenderAccount.GetAddress().String())
 
-	return endpoint.Chain.sendMsgs(ackMsg)
+	return ep.Chain.sendMsgs(ackMsg)
 }
 
 // TimeoutPacket sends a MsgTimeout to the channel associated with the endpoint.
-func (endpoint *EndpointM) TimeoutPacket(packet channeltypes.Packet, initProofHeight exported.Height) error {
+func (ep *EndpointM) TimeoutPacket(packet channeltypes.Packet, initProofHeight exported.Height) error {
 	// get proof for timeout based on channel order
-	proof, proofHeight, err := endpoint.Counterparty.QueryPacketTimeoutProof(&packet, initProofHeight)
+	proof, proofHeight, err := ep.Counterparty.QueryPacketTimeoutProof(&packet, initProofHeight)
 	if err != nil {
 		return err
 	}
 
-	nextSeqRecv, found := endpoint.Counterparty.Chain.App.GetIBCKeeper().ChannelKeeper.GetNextSequenceRecv(endpoint.Counterparty.Chain.GetContext(), endpoint.ChannelConfig.PortID, endpoint.ChannelID)
-	require.True(endpoint.Chain.T, found)
+	nextSeqRecv, found := ep.Counterparty.Chain.App.GetIBCKeeper().ChannelKeeper.GetNextSequenceRecv(ep.Counterparty.Chain.GetContext(), ep.ChannelConfig.PortID, ep.ChannelID)
+	require.True(ep.Chain.T, found)
 
 	timeoutMsg := channeltypes.NewMsgTimeout(
 		packet, nextSeqRecv,
-		proof, proofHeight, endpoint.Chain.SenderAccount.GetAddress().String(),
+		proof, proofHeight, ep.Chain.SenderAccount.GetAddress().String(),
 	)
 
-	return endpoint.Chain.sendMsgs(timeoutMsg)
+	return ep.Chain.sendMsgs(timeoutMsg)
 }
 
 // SetChannelClosed sets a channel state to CLOSED.
@@ -331,7 +331,6 @@ func (ep *EndpointM) ProofHeight() clienttypes.Height {
 	return ep.GetClientState().GetLatestHeight().(clienttypes.Height)
 }
 
-// USED FOR TESTING ONLY!!!
 func (ep *EndpointM) SetupAllButTheSpecifiedConnection(index uint) error {
 	if index >= uint(len(ep.paths)) {
 		return fmt.Errorf("SetupAllButTheSpecifiedConnection(): invalid index paramter %d", index)

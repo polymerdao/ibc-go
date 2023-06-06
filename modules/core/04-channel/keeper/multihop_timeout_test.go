@@ -335,7 +335,6 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
 			queryMultihopProofExpectedToFail = true
-			doUpdateClient = false
 		}, false},
 		{"packet hasn't been sent ORDERED", true, func() {
 			suite.chanPath.SetChannelOrdered()
