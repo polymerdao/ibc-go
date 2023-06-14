@@ -456,6 +456,7 @@ func (k Keeper) VerifyMultihopMembership(
 		return err
 	}
 
+	fmt.Printf("get consensusState for testchain-4 at height=%v\n", height)
 	consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, clientID, height)
 	if !found {
 		return sdkerrors.Wrapf(clienttypes.ErrConsensusStateNotFound,

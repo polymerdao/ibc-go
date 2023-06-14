@@ -192,6 +192,7 @@ func verifyIntermediateStateProofs(
 			}
 		}
 
+		fmt.Printf("i=%d root=%x\n", i, consensusState.Root.GetHash())
 		// prove consensus state
 		var proof commitmenttypes.MerkleProof
 		if err := cdc.Unmarshal(consensusProof.Proof, &proof); err != nil {

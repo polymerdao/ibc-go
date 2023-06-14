@@ -1,6 +1,8 @@
 package ibctesting
 
 import (
+	"fmt"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,6 +61,7 @@ func (coord *CoordinatorM) CreateChannels(path *PathM) {
 	require.NoError(coord.T, err)
 
 	err = path.EndpointZ.ChanOpenTry(path.EndpointA.Chain.LastHeader.GetHeight())
+	fmt.Printf("err=%s\n", err)
 	require.NoError(coord.T, err)
 
 	err = path.EndpointA.ChanOpenAck(path.EndpointZ.Chain.LastHeader.GetHeight())

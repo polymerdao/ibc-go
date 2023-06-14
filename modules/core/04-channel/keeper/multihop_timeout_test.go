@@ -224,8 +224,7 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 					// proof of absence of packet receipt
 					key = host.PacketReceiptKey(packet.SourcePort, packet.SourceChannel, packet.Sequence)
 				}
-				doUpdateClient := true
-				proof, proofHeight, err = suite.Z().QueryMultihopProof(key, packetHeight, doUpdateClient)
+				proof, proofHeight, err = suite.Z().QueryMultihopProof(key, packetHeight)
 				suite.Require().NoError(err)
 			}
 
@@ -254,7 +253,6 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 		nextSeqRecv                      uint64
 		err                              error
 		queryMultihopProofExpectedToFail bool
-		doUpdateClient                   bool
 	)
 
 	testCases := []timeoutTestCase{
@@ -317,7 +315,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			suite.A().Chain.CreateChannelCapability(suite.A().Chain.GetSimApp().ScopedIBCMockKeeper, suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 			chanCap = suite.A().Chain.GetChannelCapability(suite.A().ChannelConfig.PortID, suite.A().ChannelID)
 			packetHeight = suite.Z().Chain.LastHeader.GetHeight()
-			doUpdateClient = false
+			queryMultihopProofExpectedToFail = true
 		}, false},
 		{"connection not found - scenario 2", false, func() {
 			connectionIdx := 1
@@ -449,17 +447,16 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			suite.SetupTest() // reset
 			nextSeqRecv = 1   // must be explicitly changed
 			queryMultihopProofExpectedToFail = false
-			doUpdateClient = true
 
 			tc.malleate()
 
 			channelKey := host.ChannelKey(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
 
+			proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight)
 			if queryMultihopProofExpectedToFail {
-				_, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight, doUpdateClient)
+				fmt.Printf("expect failure\n")
 				suite.Require().Error(err)
 			} else {
-				proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight, doUpdateClient)
 				suite.Require().NoError(err)
 
 				if tc.orderedChannel {
@@ -469,7 +466,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 					key = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
 				}
 
-				proof, proofHeight, err := suite.Z().QueryMultihopProof(key, packetHeight, doUpdateClient)
+				proof, proofHeight, err := suite.Z().QueryMultihopProof(key, packetHeight)
 				suite.Require().NoError(err)
 
 				err = suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.TimeoutOnClose(suite.A().Chain.GetContext(), chanCap, packet, proof, proofClosed, proofHeight, nextSeqRecv)
