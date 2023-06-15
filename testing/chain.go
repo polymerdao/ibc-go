@@ -246,7 +246,6 @@ func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minConsensu
 	// search consensusStates to find the one with the minimum height in [minHeight, maxHeight]
 	var consensusHeight clienttypes.Height
 	for _, cs := range resp.ConsensusStates {
-		fmt.Printf("consensus height: %v\n", cs.Height)
 		if cs.Height.GTE(minConsensusHeight) {
 			if maxConsensusHeight == nil || (maxConsensusHeight != nil && cs.Height.LTE(maxConsensusHeight)) {
 				if consensusHeight.IsZero() || cs.Height.LTE(consensusHeight) {

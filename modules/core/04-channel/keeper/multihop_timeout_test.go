@@ -454,7 +454,6 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 
 			proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, packetHeight)
 			if queryMultihopProofExpectedToFail {
-				fmt.Printf("expect failure\n")
 				suite.Require().Error(err)
 			} else {
 				suite.Require().NoError(err)

@@ -639,33 +639,6 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 		}, false},
 	}
 
-	testCases = []channelTestCase{
-		{"packet already acknowledged ordered channel (no-op)", true, func() {
-			expError = types.ErrNoOpMsg
-
-			suite.chanPath.SetChannelOrdered()
-			suite.SetupChannels()
-
-			// create packet commitment
-			packet, packetHeight, err = suite.A().
-				SendPacket(defaultTimeoutHeight, disabledTimeoutTimestamp, ibctesting.MockPacketData)
-			suite.Require().NoError(err)
-
-			// create packet receipt and acknowledgement
-			err = suite.Z().RecvPacket(packet, packetHeight)
-			suite.Require().NoError(err)
-
-			ackHeight = suite.Z().Chain.LastHeader.GetHeight()
-
-			channelCap = suite.A().Chain.GetChannelCapability(
-				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
-			)
-
-			err = suite.A().AcknowledgePacket(*packet, packetHeight, ack.Acknowledgement())
-			suite.Require().NoError(err)
-		}, false},
-	}
-
 	packet = &types.Packet{}
 
 	for _, tc := range testCases {
@@ -676,7 +649,6 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 
 			tc.malleate()
 
-			fmt.Printf("ackHeight=%v\n", ackHeight)
 			proof, proofHeight, err := suite.Z().QueryPacketAcknowledgementProof(packet, ackHeight)
 			suite.Require().NoError(err)
 

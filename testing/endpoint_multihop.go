@@ -72,18 +72,17 @@ func (ep *EndpointM) ChanOpenInit() error {
 }
 
 // ChanOpenTry will construct and execute a MsgChannelOpenTry on the associated EndpointM.
-func (ep *EndpointM) ChanOpenTry(proofHeight exported.Height) error {
+func (ep *EndpointM) ChanOpenTry(chanInitHeight exported.Height) error {
 
-	proof, unusedProofHeight, err := ep.Counterparty.QueryChannelProof(proofHeight)
+	proof, proofHeight, err := ep.Counterparty.QueryChannelProof(chanInitHeight)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("ChanOpenTry: unusedProofHeight=%v\n", unusedProofHeight)
 	msg := channeltypes.NewMsgChannelOpenTry(
 		ep.ChannelConfig.PortID, ep.ChannelConfig.Version, ep.ChannelConfig.Order, ep.GetConnectionHops(),
 		ep.Counterparty.ChannelConfig.PortID, ep.Counterparty.ChannelID, ep.Counterparty.ChannelConfig.Version,
-		proof, unusedProofHeight,
+		proof, proofHeight,
 		ep.Chain.SenderAccount.GetAddress().String(),
 	)
 
@@ -104,9 +103,9 @@ func (ep *EndpointM) ChanOpenTry(proofHeight exported.Height) error {
 }
 
 // ChanOpenAck will construct and execute a MsgChannelOpenAck on the associated EndpointM.
-func (ep *EndpointM) ChanOpenAck(height exported.Height) error {
+func (ep *EndpointM) ChanOpenAck(chanTryHeight exported.Height) error {
 
-	proof, unusedProofHeight, err := ep.Counterparty.QueryChannelProof(height)
+	proof, proofHeight, err := ep.Counterparty.QueryChannelProof(chanTryHeight)
 	if err != nil {
 		return err
 	}
@@ -114,7 +113,7 @@ func (ep *EndpointM) ChanOpenAck(height exported.Height) error {
 	msg := channeltypes.NewMsgChannelOpenAck(
 		ep.ChannelConfig.PortID, ep.ChannelID,
 		ep.Counterparty.ChannelID, ep.Counterparty.ChannelConfig.Version,
-		proof, unusedProofHeight,
+		proof, proofHeight,
 		ep.Chain.SenderAccount.GetAddress().String(),
 	)
 	if _, err := ep.Chain.SendMsgs(msg); err != nil {
@@ -127,16 +126,16 @@ func (ep *EndpointM) ChanOpenAck(height exported.Height) error {
 }
 
 // ChanOpenConfirm will construct and execute a MsgChannelOpenConfirm on the associated EndpointM.
-func (ep *EndpointM) ChanOpenConfirm(height exported.Height) error {
+func (ep *EndpointM) ChanOpenConfirm(chanAckHeight exported.Height) error {
 
-	proof, unusedProofHeight, err := ep.Counterparty.QueryChannelProof(height)
+	proof, proofHeight, err := ep.Counterparty.QueryChannelProof(chanAckHeight)
 	if err != nil {
 		return err
 	}
 
 	msg := channeltypes.NewMsgChannelOpenConfirm(
 		ep.ChannelConfig.PortID, ep.ChannelID,
-		proof, unusedProofHeight,
+		proof, proofHeight,
 		ep.Chain.SenderAccount.GetAddress().String(),
 	)
 	_, err = ep.Chain.SendMsgs(msg)
@@ -264,25 +263,25 @@ func (ep *EndpointM) CounterpartyChannel() channeltypes.Counterparty {
 }
 
 // QueryChannelProof queries the multihop channel proof on the endpoint chain.
-func (ep *EndpointM) QueryChannelProof(proofHeight exported.Height) ([]byte, clienttypes.Height, error) {
+func (ep *EndpointM) QueryChannelProof(channelHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	channelKey := host.ChannelKey(ep.ChannelConfig.PortID, ep.ChannelID)
-	return ep.QueryMultihopProof(channelKey, proofHeight)
+	return ep.QueryMultihopProof(channelKey, channelHeight)
 }
 
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.
-func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
+func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet, packetHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketCommitmentKey(packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, height)
+	return ep.QueryMultihopProof(packetKey, packetHeight)
 }
 
 // QueryPacketAcknowledgementProof queries the multihop packet acknowledgement proof on the endpoint chain.
-func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
+func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet, ackHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, height)
+	return ep.QueryMultihopProof(packetKey, ackHeight)
 }
 
 // QueryPacketTimeoutProof queries the multihop packet timeout proof on the endpoint chain.
-func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, height exported.Height) ([]byte, clienttypes.Height, error) {
+func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, packetHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	var packetKey []byte
 
 	switch ep.ChannelConfig.Order {
@@ -291,16 +290,16 @@ func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, height
 	case channeltypes.UNORDERED:
 		packetKey = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
 	default:
-		return nil, height.(clienttypes.Height), fmt.Errorf("unsupported order type %s", ep.ChannelConfig.Order)
+		return nil, packetHeight.(clienttypes.Height), fmt.Errorf("unsupported order type %s", ep.ChannelConfig.Order)
 	}
 
-	return ep.QueryMultihopProof(packetKey, height)
+	return ep.QueryMultihopProof(packetKey, packetHeight)
 }
 
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
-func (ep *EndpointM) QueryMultihopProof(key []byte, initProofHeight exported.Height) (proof []byte, proofHeight clienttypes.Height, err error) {
+func (ep *EndpointM) QueryMultihopProof(key []byte, keyHeight exported.Height) (proof []byte, proofHeight clienttypes.Height, err error) {
 
-	multiHopProof, height, err := ep.mChanPath.QueryMultihopProof(key, initProofHeight)
+	multiHopProof, height, err := ep.mChanPath.QueryMultihopProof(key, keyHeight)
 	if err != nil {
 		return
 	}
