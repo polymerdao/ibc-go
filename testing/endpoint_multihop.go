@@ -3,7 +3,6 @@ package ibctesting
 import (
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/codec"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	clienttypes "github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v7/modules/core/03-connection/types"
@@ -415,11 +414,6 @@ func (mep multihopEndpoint) ChainID() string {
 	return mep.testEndpoint.Chain.ChainID
 }
 
-// Codec implements multihop.Endpoint
-func (mep multihopEndpoint) Codec() codec.BinaryCodec {
-	return mep.testEndpoint.Chain.Codec
-}
-
 // ClientID implements multihop.Endpoint
 func (mep multihopEndpoint) ClientID() string {
 	return mep.testEndpoint.ClientID
@@ -433,20 +427,6 @@ func (mep multihopEndpoint) ConnectionID() string {
 // Counterparty implements multihop.Endpoint
 func (mep multihopEndpoint) Counterparty() multihop.Endpoint {
 	return mep.testEndpoint.Counterparty.MultihopEndpoint()
-}
-
-func (mep multihopEndpoint) AppHash() []byte {
-	root := commitmenttypes.NewMerkleRoot(mep.testEndpoint.Chain.CurrentHeader.AppHash)
-	return root.GetHash()
-}
-
-func (mep multihopEndpoint) LastAppHash() []byte {
-	root := commitmenttypes.NewMerkleRoot(mep.testEndpoint.Chain.LastHeader.Header.AppHash)
-	return root.GetHash()
-}
-
-func (mep multihopEndpoint) GetCurrentHeight() exported.Height {
-	return clienttypes.NewHeight(1, uint64(mep.testEndpoint.Chain.CurrentHeader.GetHeight()))
 }
 
 func (mep multihopEndpoint) GetLatestHeight() exported.Height {
