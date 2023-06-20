@@ -49,6 +49,11 @@ func NewEndpointMFromLinkedPaths(path LinkedPaths) (a, z EndpointM) {
 	return
 }
 
+// GetPathsSlice returns a slice of the paths up to the provided index
+func (ep *EndpointM) GetPathSlice(len int64) LinkedPaths {
+	return ep.paths[:len]
+}
+
 // ChanOpenInit will construct and execute a MsgChannelOpenInit on the associated EndpointM.
 func (ep *EndpointM) ChanOpenInit() error {
 	msg := channeltypes.NewMsgChannelOpenInit(
@@ -265,6 +270,13 @@ func (ep *EndpointM) CounterpartyChannel() channeltypes.Counterparty {
 func (ep *EndpointM) QueryChannelProof(channelHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	channelKey := host.ChannelKey(ep.ChannelConfig.PortID, ep.ChannelID)
 	return ep.QueryMultihopProof(channelKey, channelHeight)
+}
+
+// QueryFrozenClientProof queries proof of a frozen client in the multi-hop channel path.
+func (ep *EndpointM) QueryFrozenClientProof(frozenHeight exported.Height) ([]byte, clienttypes.Height, error) {
+	clientID := ep.GetConnection().Counterparty.ClientId
+	clientKey := host.FullClientStateKey(clientID)
+	return ep.QueryMultihopProof(clientKey, frozenHeight)
 }
 
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.

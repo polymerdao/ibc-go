@@ -209,9 +209,9 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 				proofHeight exported.Height
 			)
 
-			suite.SetupTest() // reset
-			expError = nil    // must be expliticly changed by failed cases
-			nextSeqRecv = 1   // must be explicitly changed
+			suite.SetupTest(5) // reset
+			expError = nil     // must be expliticly changed by failed cases
+			nextSeqRecv = 1    // must be explicitly changed
 
 			tc.malleate()
 
@@ -444,8 +444,8 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 		suite.Run(fmt.Sprintf("Case %s, %d/%d tests", tc.msg, i, len(testCases)), func() {
 			var key []byte
 
-			suite.SetupTest() // reset
-			nextSeqRecv = 1   // must be explicitly changed
+			suite.SetupTest(5) // reset
+			nextSeqRecv = 1    // must be explicitly changed
 			queryMultihopProofExpectedToFail = false
 
 			tc.malleate()

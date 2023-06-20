@@ -50,8 +50,8 @@ type ChanPath struct {
 
 // NewChanPath creates a new multi-hop ChanPath from a list of single-hop Paths.
 func NewChanPath(paths []*Path) ChanPath {
-	if len(paths) < 2 {
-		panic(fmt.Sprintf("multihop channel path expects at least 2 single-hop paths, but got %d", len(paths)))
+	if len(paths) < 1 {
+		panic(fmt.Sprintf("multihop channel path expects at least 1 single-hop paths, but got %d", len(paths)))
 	}
 	return ChanPath{
 		Paths: paths,
@@ -96,10 +96,8 @@ func (p ChanPath) QueryMultihopProof(
 	err error,
 ) {
 
-	N := len(p.Paths) - 1
-
-	if N < 1 {
-		err = fmt.Errorf("multihop proof query requires channel path length >= 2")
+	if len(p.Paths) < 1 {
+		err = fmt.Errorf("multihop proof query requires channel path length >= 1")
 		return
 	}
 
@@ -108,8 +106,9 @@ func (p ChanPath) QueryMultihopProof(
 		return
 	}
 
-	//
-	multihopProofHeight = proofHeights[1].proofHeight
+	// the consensus state height of the proving chain's counterparty
+	// this is where multi-hop proof verification begins
+	multihopProofHeight, _ = proofHeights[0].consensusHeight.Decrement()
 
 	// the key/value proof height is the height of the consensusState on the first chain
 	keyProofHeight, ok := proofHeights[len(proofHeights)-1].consensusHeight.Decrement()
@@ -123,8 +122,8 @@ func (p ChanPath) QueryMultihopProof(
 		return
 	}
 
-	multihopProof.ConsensusProofs = make([]*channeltypes.MultihopProof, N)
-	multihopProof.ConnectionProofs = make([]*channeltypes.MultihopProof, N)
+	multihopProof.ConsensusProofs = make([]*channeltypes.MultihopProof, len(p.Paths)-1)
+	multihopProof.ConnectionProofs = make([]*channeltypes.MultihopProof, len(p.Paths)-1)
 
 	// query proofs of consensus/connection states on intermediate chains
 	if err = p.Counterparty().queryIntermediateProofs(
@@ -162,7 +161,7 @@ func (p ChanPath) calcProofPath(pathIdx int, consensusHeight exported.Height) (h
 		height.consensusHeight = chain.GetClientState().GetLatestHeight()
 	}
 
-	// stop on the final path segment
+	// stop on the next to last path segment
 	if pathIdx == len(p.Paths)-1 {
 		return []*ProofHeights{&height}, nil
 	}
@@ -236,7 +235,7 @@ func queryProof(
 	chain Endpoint,
 	key []byte,
 	height exported.Height,
-	doValue bool,
+	includeKey bool,
 ) (*channeltypes.MultihopProof, error) {
 	if len(key) == 0 {
 		return nil, fmt.Errorf("key must be non-empty")
@@ -246,10 +245,14 @@ func queryProof(
 		return nil, fmt.Errorf("height must be non-nil")
 	}
 
-	keyMerklePath, err := chain.GetMerklePath(string(key))
-	if err != nil {
-		return nil, fmt.Errorf("fail to create merkle path on chain '%s' with path '%s' due to: %v",
-			chain.ChainID(), key, err)
+	var keyMerklePath *commitmenttypes.MerklePath = nil
+	if includeKey {
+		merklePath, err := chain.GetMerklePath(string(key))
+		if err != nil {
+			return nil, fmt.Errorf("fail to create merkle path on chain '%s' with path '%s' due to: %v",
+				chain.ChainID(), key, err)
+		}
+		keyMerklePath = &merklePath
 	}
 
 	valueBytes, proof, err := chain.QueryStateAtHeight(key, int64(height.GetRevisionHeight()), true)
@@ -259,13 +262,9 @@ func queryProof(
 		)
 	}
 
-	if !doValue {
-		valueBytes = nil
-	}
-
 	return &channeltypes.MultihopProof{
 		Proof:       proof,
 		Value:       valueBytes,
-		PrefixedKey: &keyMerklePath,
+		PrefixedKey: keyMerklePath,
 	}, nil
 }

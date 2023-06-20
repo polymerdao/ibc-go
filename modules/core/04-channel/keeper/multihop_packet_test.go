@@ -286,8 +286,8 @@ func (suite *MultihopTestSuite) TestRecvPacket() {
 	for _, tc := range testCases {
 		tc := tc
 		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
-			suite.SetupTest() // reset
-			expError = nil    // must explicitly set for failed cases
+			suite.SetupTest(5) // reset
+			expError = nil     // must explicitly set for failed cases
 			if tc.orderedChannel {
 				suite.chanPath.SetChannelOrdered()
 			}
@@ -644,8 +644,8 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 	for _, tc := range testCases {
 		tc := tc
 		suite.Run(fmt.Sprintf("Case %s", tc.msg), func() {
-			suite.SetupTest() // reset
-			expError = nil    // must explcitly set error for failed cases
+			suite.SetupTest(5) // reset
+			expError = nil     // must explcitly set error for failed cases
 
 			tc.malleate()
 

@@ -22,8 +22,8 @@ type MultihopTestSuite struct {
 
 // SetupTest is run before each test method in the suite
 // No IBC connections or channels are created.
-func (suite *MultihopTestSuite) SetupTest() {
-	coord, paths := ibctesting.CreateLinkedChains(&suite.Suite, 5)
+func (suite *MultihopTestSuite) SetupTest(numChains int) {
+	coord, paths := ibctesting.CreateLinkedChains(&suite.Suite, numChains)
 	suite.chanPath = paths.ToPathM()
 	suite.coord = &ibctesting.CoordinatorM{Coordinator: coord}
 }

@@ -52,10 +52,10 @@ func VerifyMultihopMembership(
 ) error {
 
 	// verify proof lengths
-	if len(proofs.ConnectionProofs) < 1 || len(proofs.ConsensusProofs) < 1 {
-		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be > 0",
-			len(proofs.ConnectionProofs), len(proofs.ConsensusProofs))
-	}
+	// if len(proofs.ConnectionProofs) < 1 || len(proofs.ConsensusProofs) < 1 {
+	// 	return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be > 0",
+	// 		len(proofs.ConnectionProofs), len(proofs.ConsensusProofs))
+	// }
 
 	if len(proofs.ConsensusProofs) != len(proofs.ConnectionProofs) {
 		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be equal",
@@ -73,7 +73,7 @@ func VerifyMultihopMembership(
 	}
 
 	// verify the keyproof on source chain's consensus state.
-	return verifyKeyValueMembership(cdc, proofs, prefix, key, value)
+	return verifyKeyValueMembership(cdc, consensusState, proofs, prefix, key, value)
 }
 
 // VerifyMultihopNonMembership verifies a multihop proof. A nil value indicates a non-inclusion proof (proof of absence).
@@ -87,10 +87,10 @@ func VerifyMultihopNonMembership(
 ) error {
 
 	// verify proof lengths
-	if len(proofs.ConnectionProofs) < 1 || len(proofs.ConsensusProofs) < 1 {
-		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be > 0",
-			len(proofs.ConnectionProofs), len(proofs.ConsensusProofs))
-	}
+	// if len(proofs.ConnectionProofs) < 1 || len(proofs.ConsensusProofs) < 1 {
+	// 	return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be > 0",
+	// 		len(proofs.ConnectionProofs), len(proofs.ConsensusProofs))
+	// }
 
 	if len(proofs.ConsensusProofs) != len(proofs.ConnectionProofs) {
 		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be equal",
@@ -108,7 +108,7 @@ func VerifyMultihopNonMembership(
 	}
 
 	// verify the keyproof on source chain's consensus state.
-	return verifyKeyNonMembership(cdc, proofs, prefix, key)
+	return verifyKeyNonMembership(cdc, consensusState, proofs, prefix, key)
 }
 
 // verifyConnectionStates verifies that the provided connections match the connectionHops field of the channel and are in OPEN state
@@ -241,6 +241,7 @@ func verifyIntermediateStateProofs(
 // verifyKeyValueMembership verifies a multihop membership proof including all intermediate state proofs.
 func verifyKeyValueMembership(
 	cdc codec.BinaryCodec,
+	consensusStateI exported.ConsensusState,
 	proofs *channeltypes.MsgMultihopProofs,
 	prefix exported.Prefix,
 	key string,
@@ -262,10 +263,11 @@ func verifyKeyValueMembership(
 		return fmt.Errorf("failed to unmarshal key proof: %w", err)
 	}
 
-	var consensusStateI exported.ConsensusState
-	index := uint32(len(proofs.ConsensusProofs)) - proofs.KeyProofIndex - 1
-	if err := cdc.UnmarshalInterface(proofs.ConsensusProofs[index].Value, &consensusStateI); err != nil {
-		return fmt.Errorf("failed to unpack consensus state: %w", err)
+	if len(proofs.ConsensusProofs) > 0 {
+		index := uint32(len(proofs.ConsensusProofs)) - 1
+		if err := cdc.UnmarshalInterface(proofs.ConsensusProofs[index].Value, &consensusStateI); err != nil {
+			return fmt.Errorf("failed to unpack consensus state: %w", err)
+		}
 	}
 	consensusState, ok := consensusStateI.(*tmclient.ConsensusState)
 	if !ok {
@@ -283,6 +285,7 @@ func verifyKeyValueMembership(
 // verifyKeyNonMembership verifies a multihop non-membership proof including all intermediate state proofs.
 func verifyKeyNonMembership(
 	cdc codec.BinaryCodec,
+	consensusStateI exported.ConsensusState,
 	proofs *channeltypes.MsgMultihopProofs,
 	prefix exported.Prefix,
 	key string,
@@ -302,10 +305,11 @@ func verifyKeyNonMembership(
 		return fmt.Errorf("failed to unmarshal key proof: %w", err)
 	}
 
-	var consensusStateI exported.ConsensusState
-	index := uint32(len(proofs.ConsensusProofs)) - proofs.KeyProofIndex - 1
-	if err := cdc.UnmarshalInterface(proofs.ConsensusProofs[index].Value, &consensusStateI); err != nil {
-		return fmt.Errorf("failed to unpack consensus state: %w", err)
+	if len(proofs.ConsensusProofs) > 0 {
+		index := uint32(len(proofs.ConsensusProofs)) - 1
+		if err := cdc.UnmarshalInterface(proofs.ConsensusProofs[index].Value, &consensusStateI); err != nil {
+			return fmt.Errorf("failed to unpack consensus state: %w", err)
+		}
 	}
 	consensusState, ok := consensusStateI.(*tmclient.ConsensusState)
 	if !ok {
