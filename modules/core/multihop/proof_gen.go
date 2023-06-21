@@ -96,6 +96,7 @@ func (p ChanPath) QueryMultihopProof(
 	err error,
 ) {
 
+	fmt.Printf("querying key: %s\n", key)
 	if len(p.Paths) < 1 {
 		err = fmt.Errorf("multihop proof query requires channel path length >= 1")
 		return

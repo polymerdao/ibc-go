@@ -26,32 +26,27 @@ type EndpointM struct {
 	*Endpoint
 	Counterparty *EndpointM
 
-	// a list of single-hop paths that are linked together,
-	// eg. for chains {A,B,C,D} the linked paths would be Link{AB, BC, CD}
-	paths     LinkedPaths
+	// a list of single-hop Paths that are linked together,
+	// eg. for chains {A,B,C,D} the linked Paths would be Link{AB, BC, CD}
+	Paths     LinkedPaths
 	mChanPath multihop.ChanPath
 }
 
 // NewEndpointMFromLinkedPaths constructs a new EndpointM without the counterparty.
 // CONTRACT: the counterparty EndpointM must be set by the caller.
 func NewEndpointMFromLinkedPaths(path LinkedPaths) (a, z EndpointM) {
-	a.paths = path
-	a.Endpoint = a.paths.A()
+	a.Paths = path
+	a.Endpoint = a.Paths.A()
 	a.Counterparty = &z
 
-	z.paths = path.Reverse()
-	z.Endpoint = z.paths.A()
+	z.Paths = path.Reverse()
+	z.Endpoint = z.Paths.A()
 	z.Counterparty = &a
 
 	// create multihop channel paths
-	a.mChanPath = a.paths.ToMultihopChanPath()
-	z.mChanPath = z.paths.ToMultihopChanPath()
+	a.mChanPath = a.Paths.ToMultihopChanPath()
+	z.mChanPath = z.Paths.ToMultihopChanPath()
 	return
-}
-
-// GetPathsSlice returns a slice of the paths up to the provided index
-func (ep *EndpointM) GetPathSlice(len int64) LinkedPaths {
-	return ep.paths[:len]
 }
 
 // ChanOpenInit will construct and execute a MsgChannelOpenInit on the associated EndpointM.
@@ -273,10 +268,19 @@ func (ep *EndpointM) QueryChannelProof(channelHeight exported.Height) ([]byte, c
 }
 
 // QueryFrozenClientProof queries proof of a frozen client in the multi-hop channel path.
-func (ep *EndpointM) QueryFrozenClientProof(frozenHeight exported.Height) ([]byte, clienttypes.Height, error) {
-	clientID := ep.GetConnection().Counterparty.ClientId
+func (ep *EndpointM) QueryFrozenClientProof(connectionID, clientID string, frozenHeight exported.Height) (proofConnection []byte, proofClientState []byte, proofHeight clienttypes.Height, err error) {
+	connectionKey := host.ConnectionKey(connectionID)
+	fmt.Printf("QueryFrozenClientProof: connectionKey=%s\n", connectionKey)
+	if proofConnection, proofHeight, err = ep.QueryMultihopProof(connectionKey, frozenHeight); err != nil {
+		return
+	}
+
 	clientKey := host.FullClientStateKey(clientID)
-	return ep.QueryMultihopProof(clientKey, frozenHeight)
+	fmt.Printf("QueryFrozenClientProof: clientKey=%s\n", clientKey)
+	if proofClientState, _, err = ep.QueryMultihopProof(clientKey, frozenHeight); err != nil {
+		return
+	}
+	return
 }
 
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.

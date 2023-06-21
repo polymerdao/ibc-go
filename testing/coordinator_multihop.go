@@ -20,7 +20,7 @@ type CoordinatorM struct {
 // SetupClients is a helper function to create clients on both chains. It assumes the
 // caller does not anticipate any errors.
 func (coord *CoordinatorM) SetupClients(path *PathM) {
-	for _, path := range path.EndpointA.paths {
+	for _, path := range path.EndpointA.Paths {
 		require.Empty(coord.T, path.EndpointA.ClientID)
 		require.Empty(coord.T, path.EndpointB.ClientID)
 		require.Empty(coord.T, path.EndpointA.ConnectionID)
@@ -30,6 +30,7 @@ func (coord *CoordinatorM) SetupClients(path *PathM) {
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)
 		}
+		fmt.Printf("EndpointA.ClientID=%s EndpointB.ClientID=%s\n", path.EndpointA.ClientID, path.EndpointB.ClientID)
 	}
 }
 
@@ -42,11 +43,11 @@ func (coord *CoordinatorM) SetupConnections(path *PathM) {
 }
 
 func (coord *CoordinatorM) SetupAllButTheSpecifiedConnection(path *PathM, index int) error {
-	if index >= len(path.EndpointA.paths) {
+	if index >= len(path.EndpointA.Paths) {
 		return fmt.Errorf("SetupAllButTheSpecifiedConnection(): invalid index parameter %d", index)
 	}
 
-	for _, path := range path.EndpointA.paths[:index] {
+	for _, path := range path.EndpointA.Paths[:index] {
 		N := rand.Int() % 5
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)
@@ -54,7 +55,7 @@ func (coord *CoordinatorM) SetupAllButTheSpecifiedConnection(path *PathM, index 
 		coord.Coordinator.CreateConnections(path)
 	}
 
-	for _, path := range path.EndpointA.paths[index+1:] {
+	for _, path := range path.EndpointA.Paths[index+1:] {
 		N := rand.Int() % 5
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)
@@ -70,7 +71,7 @@ func (coord *CoordinatorM) SetupAllButTheSpecifiedConnection(path *PathM, index 
 // are returned within a TestConnection struct. The function expects the connections to be
 // successfully opened otherwise testing will fail.
 func (coord *CoordinatorM) CreateConnections(path *PathM) {
-	for _, path := range path.EndpointA.paths {
+	for _, path := range path.EndpointA.Paths {
 		path := path
 		coord.Coordinator.CreateConnections(path)
 	}
