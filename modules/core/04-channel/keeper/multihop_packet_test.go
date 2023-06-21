@@ -405,7 +405,7 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
 			)
 
-			err = suite.A().AcknowledgePacket(*packet, packetHeight, ack.Acknowledgement())
+			err = suite.A().AcknowledgePacket(*packet, ackHeight, ack.Acknowledgement())
 			suite.Require().NoError(err)
 		}, false},
 		{"packet already acknowledged unordered channel (no-op)", false, func() {
@@ -428,7 +428,7 @@ func (suite *MultihopTestSuite) TestAcknowledgePacket() {
 				suite.A().ChannelConfig.PortID, suite.A().ChannelID,
 			)
 
-			err = suite.A().AcknowledgePacket(*packet, packetHeight, ack.Acknowledgement())
+			err = suite.A().AcknowledgePacket(*packet, ackHeight, ack.Acknowledgement())
 			suite.Require().NoError(err)
 		}, false},
 		{"channel not found", false, func() {

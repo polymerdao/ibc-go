@@ -33,6 +33,11 @@ func (s *MultihopTestSuite) SetupConnections() {
 	s.coord.SetupConnections(s.chanPath)
 }
 
+// SetupConnections creates connections between each pair of chains in the multihop path.
+func (s *MultihopTestSuite) SetupAllButTheSpecifiedConnection(index int) {
+	s.coord.SetupAllButTheSpecifiedConnection(s.chanPath, index)
+}
+
 // SetupChannels create a multihop channel after creating all its preprequisites in order, ie. clients, connections.
 func (s *MultihopTestSuite) SetupChannels() {
 	s.coord.SetupChannels(s.chanPath)
