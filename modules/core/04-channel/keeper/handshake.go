@@ -709,7 +709,12 @@ func (k Keeper) ChanCloseConfirm(
 }
 
 // ChanCloseFrozen is called by the counterparty module to close their end of the
-// channel due to a frozen client in the channel path.
+// channel due to a frozen client in the channel path. The proof arguments are
+// expected to have been queried from the chain with the frozen client along the
+// channel path.
+//
+// proofConnection - proof of the connectionEnd for the frozen chain (contains the clientID)
+// proofClientState - proof of the frozen clientState (clientID determined from the connectionEnd)
 func (k Keeper) ChanCloseFrozen(
 	ctx sdk.Context,
 	portID,
@@ -825,7 +830,7 @@ func (k Keeper) ChanCloseFrozen(
 		Info("channel state updated", "port-id", portID, "channel-id", channelID, "previous-state", channel.State.String(), "new-state", "CLOSED")
 
 	defer func() {
-		telemetry.IncrCounter(1, "ibc", "channel", "close-confirm")
+		telemetry.IncrCounter(1, "ibc", "channel", "close-frozen")
 	}()
 
 	channel.State = types.FROZEN
