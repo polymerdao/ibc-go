@@ -414,7 +414,7 @@ func (mep multihopEndpoint) QueryMaximumProofHeight(key []byte, minKeyHeight exp
 }
 
 // UpdateClient updates the IBC client associated with the endpoint.
-// Returns error for non-existant clients.
+// Returns error for non-existent clients.
 func (mep multihopEndpoint) UpdateClient() (err error) {
 
 	_, found := mep.testEndpoint.Chain.App.GetIBCKeeper().ClientKeeper.GetClientState(mep.testEndpoint.Chain.GetContext(), mep.testEndpoint.ClientID)
