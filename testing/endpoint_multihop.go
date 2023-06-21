@@ -270,13 +270,11 @@ func (ep *EndpointM) QueryChannelProof(channelHeight exported.Height) ([]byte, c
 // QueryFrozenClientProof queries proof of a frozen client in the multi-hop channel path.
 func (ep *EndpointM) QueryFrozenClientProof(connectionID, clientID string, frozenHeight exported.Height) (proofConnection []byte, proofClientState []byte, proofHeight clienttypes.Height, err error) {
 	connectionKey := host.ConnectionKey(connectionID)
-	fmt.Printf("QueryFrozenClientProof: connectionKey=%s\n", connectionKey)
 	if proofConnection, proofHeight, err = ep.QueryMultihopProof(connectionKey, frozenHeight); err != nil {
 		return
 	}
 
 	clientKey := host.FullClientStateKey(clientID)
-	fmt.Printf("QueryFrozenClientProof: clientKey=%s\n", clientKey)
 	if proofClientState, _, err = ep.QueryMultihopProof(clientKey, frozenHeight); err != nil {
 		return
 	}

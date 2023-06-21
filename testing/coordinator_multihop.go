@@ -30,7 +30,6 @@ func (coord *CoordinatorM) SetupClients(path *PathM) {
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)
 		}
-		fmt.Printf("EndpointA.ClientID=%s EndpointB.ClientID=%s\n", path.EndpointA.ClientID, path.EndpointB.ClientID)
 	}
 }
 

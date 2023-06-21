@@ -760,23 +760,20 @@ func (k Keeper) ChanCloseFrozen(
 		return fmt.Errorf("cannot unmarshal proof: %v", err)
 	}
 
-	fmt.Printf("connectionHops: %v\n", channel.ConnectionHops)
-
 	var clientID string
 	connectionKVGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-		testKey := host.ConnectionPath(channel.ConnectionHops[0])
-		fmt.Printf("testKey: %s\n", testKey)
-		fmt.Printf("len(consensusProofs)=%d\n", len(mProof.ConsensusProofs))
-		connectionID := channel.ConnectionHops[len(mProof.ConsensusProofs)+1]
+		connectionIdx := len(mProof.ConsensusProofs) + 1
+		if connectionIdx > len(channel.ConnectionHops)-1 {
+			return "", nil, fmt.Errorf("connectionKVGenerator: connectionHops index out of range (%d > %d)", connectionIdx, len(channel.ConnectionHops)-1)
+		}
+		connectionID := channel.ConnectionHops[connectionIdx]
 		key := host.ConnectionPath(connectionID)
-		fmt.Printf("connection key: %s\n", key)
 		value := mProof.KeyProof.Value
 		var connectionEnd connectiontypes.ConnectionEnd
 		if err := k.cdc.Unmarshal(value, &connectionEnd); err != nil {
 			return "", nil, fmt.Errorf("connectionKVGenerator: %s", err)
 		}
 		clientID = connectionEnd.ClientId
-		fmt.Printf("connection clientID: %s counterpartyID: %s\n", clientID, connectionEnd.GetCounterparty().GetClientID())
 		return key, value, nil
 	}
 
@@ -813,7 +810,6 @@ func (k Keeper) ChanCloseFrozen(
 	}
 
 	// check client is frozen
-	fmt.Printf("cs.FrozenHeight: %v\n", cs.FrozenHeight)
 	if cs.FrozenHeight.RevisionHeight == 0 {
 		return fmt.Errorf("cannot close channel, client is not frozen")
 	}
