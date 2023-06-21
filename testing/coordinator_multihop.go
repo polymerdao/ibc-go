@@ -25,7 +25,7 @@ func (coord *CoordinatorM) SetupClients(path *PathM) {
 		require.Empty(coord.T, path.EndpointB.ClientID)
 		require.Empty(coord.T, path.EndpointA.ConnectionID)
 		require.Empty(coord.T, path.EndpointB.ConnectionID)
-		// Add variability to the clientIDs
+		// add variability to the clientIDs
 		N := rand.Int() % 5
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)
@@ -47,6 +47,7 @@ func (coord *CoordinatorM) SetupAllButTheSpecifiedConnection(path *PathM, index 
 	}
 
 	for _, path := range path.EndpointA.Paths[:index] {
+		// add variability to the clientIDs
 		N := rand.Int() % 5
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)
@@ -55,6 +56,7 @@ func (coord *CoordinatorM) SetupAllButTheSpecifiedConnection(path *PathM, index 
 	}
 
 	for _, path := range path.EndpointA.Paths[index+1:] {
+		// add variability to the clientIDs
 		N := rand.Int() % 5
 		for n := 0; n <= N; n++ {
 			coord.Coordinator.SetupClients(path)

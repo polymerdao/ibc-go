@@ -381,12 +381,6 @@ func (mep multihopEndpoint) GetConnection() (*connectiontypes.ConnectionEnd, err
 
 // GetConsensusState implements multihop.Endpoint
 func (mep multihopEndpoint) GetConsensusState(height exported.Height) (exported.ConsensusState, bool) {
-	//fmt.Printf("GetConsensusState: chain=%s chainHeight=%v, counterPartyHeight=%v, consensusHeight=%v\n",
-	// 	mep.testEndpoint.Chain.ChainID,
-	// 	mep.testEndpoint.Chain.LastHeader.GetHeight(),
-	// 	mep.testEndpoint.Counterparty.Chain.LastHeader.GetHeight(),
-	// 	height,
-	// )
 	return mep.testEndpoint.Chain.GetConsensusState(mep.testEndpoint.ClientID, height)
 }
 
@@ -420,37 +414,13 @@ func (mep multihopEndpoint) QueryMaximumProofHeight(key []byte, minKeyHeight exp
 }
 
 // UpdateClient updates the IBC client associated with the endpoint.
+// Returns error for non-existant clients.
 func (mep multihopEndpoint) UpdateClient() (err error) {
 
-	// TODO: see about removing client check from chain.GetClientState()
 	_, found := mep.testEndpoint.Chain.App.GetIBCKeeper().ClientKeeper.GetClientState(mep.testEndpoint.Chain.GetContext(), mep.testEndpoint.ClientID)
 	if !found {
 		return fmt.Errorf("client=%s not found on chain=%s", mep.testEndpoint.ClientID, mep.testEndpoint.Chain.ChainID)
 	}
-	// ensure counterparty has committed state
-	mep.testEndpoint.Chain.Coordinator.CommitBlock(mep.testEndpoint.Counterparty.Chain)
 
-	var header exported.ClientMessage
-
-	switch mep.testEndpoint.ClientConfig.GetClientType() {
-	case exported.Tendermint:
-		header, err = mep.testEndpoint.Chain.ConstructUpdateTMClientHeader(mep.testEndpoint.Counterparty.Chain, mep.testEndpoint.ClientID)
-
-	default:
-		err = fmt.Errorf("client type %s is not supported", mep.testEndpoint.ClientConfig.GetClientType())
-	}
-
-	if err != nil {
-		return err
-	}
-
-	msg, err := clienttypes.NewMsgUpdateClient(
-		mep.testEndpoint.ClientID, header,
-		mep.testEndpoint.Chain.SenderAccount.GetAddress().String(),
-	)
-	if err != nil {
-		return err
-	}
-
-	return mep.testEndpoint.Chain.sendMsgs(msg)
+	return mep.testEndpoint.UpdateClient()
 }
