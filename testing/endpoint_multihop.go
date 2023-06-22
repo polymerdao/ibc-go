@@ -264,18 +264,18 @@ func (ep *EndpointM) CounterpartyChannel() channeltypes.Counterparty {
 // QueryChannelProof queries the multihop channel proof on the endpoint chain.
 func (ep *EndpointM) QueryChannelProof(channelHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	channelKey := host.ChannelKey(ep.ChannelConfig.PortID, ep.ChannelID)
-	return ep.QueryMultihopProof(channelKey, channelHeight)
+	return ep.QueryMultihopProof(channelKey, channelHeight, false)
 }
 
 // QueryFrozenClientProof queries proof of a frozen client in the multi-hop channel path.
 func (ep *EndpointM) QueryFrozenClientProof(connectionID, clientID string, frozenHeight exported.Height) (proofConnection []byte, proofClientState []byte, proofHeight clienttypes.Height, err error) {
 	connectionKey := host.ConnectionKey(connectionID)
-	if proofConnection, proofHeight, err = ep.QueryMultihopProof(connectionKey, frozenHeight); err != nil {
+	if proofConnection, proofHeight, err = ep.QueryMultihopProof(connectionKey, frozenHeight, true); err != nil {
 		return
 	}
 
 	clientKey := host.FullClientStateKey(clientID)
-	if proofClientState, _, err = ep.QueryMultihopProof(clientKey, frozenHeight); err != nil {
+	if proofClientState, _, err = ep.QueryMultihopProof(clientKey, frozenHeight, true); err != nil {
 		return
 	}
 	return
@@ -284,13 +284,13 @@ func (ep *EndpointM) QueryFrozenClientProof(connectionID, clientID string, froze
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketProof(packet *channeltypes.Packet, packetHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketCommitmentKey(packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, packetHeight)
+	return ep.QueryMultihopProof(packetKey, packetHeight, false)
 }
 
 // QueryPacketAcknowledgementProof queries the multihop packet acknowledgement proof on the endpoint chain.
 func (ep *EndpointM) QueryPacketAcknowledgementProof(packet *channeltypes.Packet, ackHeight exported.Height) ([]byte, clienttypes.Height, error) {
 	packetKey := host.PacketAcknowledgementKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
-	return ep.QueryMultihopProof(packetKey, ackHeight)
+	return ep.QueryMultihopProof(packetKey, ackHeight, false)
 }
 
 // QueryPacketTimeoutProof queries the multihop packet timeout proof on the endpoint chain.
@@ -306,13 +306,13 @@ func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, packet
 		return nil, packetHeight.(clienttypes.Height), fmt.Errorf("unsupported order type %s", ep.ChannelConfig.Order)
 	}
 
-	return ep.QueryMultihopProof(packetKey, packetHeight)
+	return ep.QueryMultihopProof(packetKey, packetHeight, false)
 }
 
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
-func (ep *EndpointM) QueryMultihopProof(key []byte, keyHeight exported.Height) (proof []byte, proofHeight clienttypes.Height, err error) {
+func (ep *EndpointM) QueryMultihopProof(key []byte, keyHeight exported.Height, includeKeyValue bool) (proof []byte, proofHeight clienttypes.Height, err error) {
 
-	multiHopProof, height, err := ep.mChanPath.QueryMultihopProof(key, keyHeight)
+	multiHopProof, height, err := ep.mChanPath.QueryMultihopProof(key, keyHeight, includeKeyValue)
 	if err != nil {
 		return
 	}

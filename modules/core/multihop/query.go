@@ -89,7 +89,8 @@ func (p ChanPath) Source() Endpoint {
 // multi-hop proof verification.
 func (p ChanPath) QueryMultihopProof(
 	key []byte,
-	keyProofHeight exported.Height,
+	keyHeight exported.Height,
+	includeKeyValue bool,
 ) (
 	multihopProof channeltypes.MsgMultihopProofs,
 	multihopProofHeight exported.Height,
@@ -101,24 +102,28 @@ func (p ChanPath) QueryMultihopProof(
 		return
 	}
 
-	proofHeights, err := p.calcProofPath(0, keyProofHeight)
+	proofHeights, err := p.calcProofPath(0, keyHeight)
 	if err != nil {
 		return
 	}
 
 	// the consensus state height of the proving chain's counterparty
 	// this is where multi-hop proof verification begins
-	multihopProofHeight, _ = proofHeights[0].consensusHeight.Decrement()
+	multihopProofHeight, ok := proofHeights[0].consensusHeight.Decrement()
+	if !ok {
+		err = fmt.Errorf("failed to decrement consensusHeight for multihop proof height")
+		return
+	}
 
 	// the key/value proof height is the height of the consensusState on the first chain
-	keyProofHeight, ok := proofHeights[len(proofHeights)-1].consensusHeight.Decrement()
+	keyHeight, ok = proofHeights[len(proofHeights)-1].consensusHeight.Decrement()
 	if !ok {
-		err = fmt.Errorf("failed to decrement consensusHeight while setting key proof height")
+		err = fmt.Errorf("failed to decrement consensusHeight for key height")
 		return
 	}
 
 	// query the proof of the key/value on the source chain
-	if multihopProof.KeyProof, err = queryProof(p.Source(), key, keyProofHeight, false); err != nil {
+	if multihopProof.KeyProof, err = queryProof(p.Source(), key, keyHeight, false, includeKeyValue); err != nil {
 		return
 	}
 
@@ -214,7 +219,7 @@ func queryConsensusStateProof(
 	consensusHeight exported.Height,
 ) (*channeltypes.MultihopProof, error) {
 	key := host.FullConsensusStateKey(chain.ClientID(), consensusHeight)
-	return queryProof(chain, key, proofHeight, true)
+	return queryProof(chain, key, proofHeight, true, true)
 }
 
 // queryConnectionProof queries a chain for a proof at `proofHeight` for a connection
@@ -223,7 +228,7 @@ func queryConnectionProof(
 	proofHeight exported.Height,
 ) (*channeltypes.MultihopProof, error) {
 	key := host.ConnectionKey(chain.ConnectionID())
-	return queryProof(chain, key, proofHeight, true)
+	return queryProof(chain, key, proofHeight, true, true)
 }
 
 // queryProof queries a (non-)membership proof for the key on the specified chain and
@@ -236,6 +241,7 @@ func queryProof(
 	key []byte,
 	height exported.Height,
 	includeKey bool,
+	includeValue bool,
 ) (*channeltypes.MultihopProof, error) {
 	if len(key) == 0 {
 		return nil, fmt.Errorf("key must be non-empty")
@@ -245,7 +251,7 @@ func queryProof(
 		return nil, fmt.Errorf("height must be non-nil")
 	}
 
-	var keyMerklePath *commitmenttypes.MerklePath = nil
+	var keyMerklePath *commitmenttypes.MerklePath
 	if includeKey {
 		merklePath, err := chain.GetMerklePath(string(key))
 		if err != nil {
@@ -255,11 +261,16 @@ func queryProof(
 		keyMerklePath = &merklePath
 	}
 
-	valueBytes, proof, err := chain.QueryStateAtHeight(key, int64(height.GetRevisionHeight()), true)
+	bytes, proof, err := chain.QueryStateAtHeight(key, int64(height.GetRevisionHeight()), true)
 	if err != nil {
 		return nil, fmt.Errorf("fail to generate proof on chain '%s' for key '%s' at height %d due to: %v",
 			chain.ChainID(), key, height, err,
 		)
+	}
+
+	var valueBytes []byte
+	if includeValue {
+		valueBytes = bytes
 	}
 
 	return &channeltypes.MultihopProof{
