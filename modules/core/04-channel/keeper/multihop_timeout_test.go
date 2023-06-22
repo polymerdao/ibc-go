@@ -225,7 +225,7 @@ func (suite *MultihopTestSuite) TestTimeoutPacket() {
 					// proof of absence of packet receipt
 					key = host.PacketReceiptKey(packet.SourcePort, packet.SourceChannel, packet.Sequence)
 				}
-				proof, proofHeight, err = suite.Z().QueryMultihopProof(key, timeoutHeight)
+				proof, proofHeight, err = suite.Z().QueryMultihopProof(key, timeoutHeight, false)
 				suite.Require().NoError(err)
 			}
 
@@ -451,7 +451,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 			channelKey := host.ChannelKey(suite.Z().ChannelConfig.PortID, suite.Z().ChannelID)
 
 			closedHeight := suite.Z().Chain.LastHeader.GetHeight()
-			proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, closedHeight)
+			proofClosed, _, err := suite.Z().QueryMultihopProof(channelKey, closedHeight, false)
 			if queryMultihopProofExpectedToFail {
 				suite.Require().Error(err)
 			} else {
@@ -464,7 +464,7 @@ func (suite *MultihopTestSuite) TestTimeoutOnClose() {
 					key = host.PacketReceiptKey(packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence())
 				}
 
-				proof, proofHeight, err := suite.Z().QueryMultihopProof(key, closedHeight)
+				proof, proofHeight, err := suite.Z().QueryMultihopProof(key, closedHeight, false)
 				suite.Require().NoError(err)
 
 				err = suite.A().Chain.App.GetIBCKeeper().ChannelKeeper.TimeoutOnClose(suite.A().Chain.GetContext(), chanCap, packet, proof, proofClosed, proofHeight, nextSeqRecv)
