@@ -108,7 +108,7 @@ func (p ChanPath) QueryMultihopProof(
 
 	// calculate proof heights along channel path
 	proofHeights := make([]*ProofHeights, len(p.Paths))
-	if err = p.calcProofPath(0, keyHeight, proofHeights); err != nil {
+	if err = p.calcProofHeights(0, keyHeight, proofHeights); err != nil {
 		return
 	}
 
@@ -145,9 +145,9 @@ func (p ChanPath) QueryMultihopProof(
 	return
 }
 
-// calcProofPath calculates the optimal proof heights to generate a multi-hop proof along the channel path
+// calcProofHeights calculates the optimal proof heights to generate a multi-hop proof along the channel path
 // and performs client updates as needed.
-func (p ChanPath) calcProofPath(pathIdx int, consensusHeight exported.Height, proofHeights []*ProofHeights) (err error) {
+func (p ChanPath) calcProofHeights(pathIdx int, consensusHeight exported.Height, proofHeights []*ProofHeights) (err error) {
 	var height ProofHeights
 	chain := p.Paths[pathIdx].EndpointB
 
@@ -182,7 +182,7 @@ func (p ChanPath) calcProofPath(pathIdx int, consensusHeight exported.Height, pr
 	}
 
 	// use the proofHeight as the next consensus height
-	if err = p.calcProofPath(pathIdx+1, height.proofHeight, proofHeights); err != nil {
+	if err = p.calcProofHeights(pathIdx+1, height.proofHeight, proofHeights); err != nil {
 		return
 	}
 
