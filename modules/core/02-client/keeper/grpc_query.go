@@ -17,6 +17,7 @@ import (
 	"github.com/cosmos/ibc-go/v7/modules/core/02-client/types"
 	host "github.com/cosmos/ibc-go/v7/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v7/modules/core/exported"
+	tm "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 )
 
 var _ types.QueryServer = Keeper{}
@@ -141,6 +142,33 @@ func (q Keeper) ConsensusState(c context.Context, req *types.QueryConsensusState
 		ConsensusState: any,
 		ProofHeight:    proofHeight,
 	}, nil
+}
+
+// NextConsensusState implements the Query/GetNextConsensusState gRPC method
+func (q Keeper) NextConsensusStateHeight(c context.Context, req *types.QueryNextConsensusStateHeightRequest) (*types.QueryNextConsensusStateHeightResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+
+	if err := host.ClientIdentifierValidator(req.ClientId); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	ctx := sdk.UnwrapSDKContext(c)
+
+	height := types.NewHeight(req.RevisionNumber, req.RevisionHeight)
+	if req.RevisionHeight == 0 {
+		return nil, status.Error(codes.InvalidArgument, "consensus state height cannot be 0")
+	}
+
+	clientStore := q.ClientStore(ctx, req.ClientId)
+	consensusStateHeight, _ := tm.GetNextConsensusStateHeight(clientStore, q.cdc, height)
+
+	var resp types.QueryNextConsensusStateHeightResponse
+	if consensusStateHeight != nil {
+		resp.ConsensusHeight = consensusStateHeight.(types.Height)
+	}
+	return &resp, nil
 }
 
 // ConsensusStates implements the Query/ConsensusStates gRPC method

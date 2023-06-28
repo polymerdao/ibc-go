@@ -224,7 +224,7 @@ func (chain *TestChain) QueryStateAtHeight(key []byte, height int64, doProof boo
 	return chain.QueryStateForStore(exported.StoreKey, key, height, doProof)
 }
 
-// QueryMinimumConsensusHeight returns the minimum height within the provided range at which the consensusState exists. The function
+// QueryNextConsensusHeight returns the minimum height within the provided range at which the consensusState exists. The function
 // scans existing consensusStates and finds the minimum consensus state height, H, satisfying: minHeight <= H < maxHeight
 // The processed height is then queried for the given consensusState to determine when it was processed on the chain. This is the minimum
 // height which can be used to prove the minimum consensusState on this chain. The consensusState height is the minimum height which can
@@ -235,48 +235,76 @@ func (chain *TestChain) QueryStateAtHeight(key []byte, height int64, doProof boo
 //	The first returned height is the processed height for a consensusState.
 //	The second returned height is the minimum consensusState height falling within the provided height range.
 //	The third returned parameter is a boolean indicating whether a client update is required.
-func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minConsensusHeight exported.Height, maxConsensusHeight exported.Height) (exported.Height, exported.Height, error) {
+func (chain *TestChain) QueryNextConsensusHeight(clientID string, minConsensusHeight exported.Height) (exported.Height, exported.Height, error) {
 
-	req := clienttypes.QueryConsensusStatesRequest{
-		ClientId: clientID,
+	req := clienttypes.QueryNextConsensusStateHeightRequest{
+		ClientId:       clientID,
+		RevisionNumber: minConsensusHeight.GetRevisionNumber(),
+		RevisionHeight: minConsensusHeight.GetRevisionHeight() - 1,
 	}
 
-	resp, err := chain.App.GetIBCKeeper().ClientKeeper.ConsensusStates(chain.GetContext(), &req)
+	resp, err := chain.App.GetIBCKeeper().ClientKeeper.NextConsensusStateHeight(chain.GetContext(), &req)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	// search consensusStates to find the one with the minimum height in [minHeight, maxHeight]
-	var consensusHeight clienttypes.Height
-	for _, cs := range resp.ConsensusStates {
-		if cs.Height.GTE(minConsensusHeight) {
-			if maxConsensusHeight == nil || (maxConsensusHeight != nil && cs.Height.LTE(maxConsensusHeight)) {
-				if consensusHeight.IsZero() || cs.Height.LTE(consensusHeight) {
-					consensusHeight = cs.Height
-				}
-			}
-		}
+		e := fmt.Errorf("QueryNextConsensusHeight: %s", err)
+		return nil, nil, e
 	}
 
 	// no consensusState found, client update needed
-	if consensusHeight.IsZero() {
-		return nil, nil, nil // TODO: use error type to indicate when to try client update?
+	if resp.ConsensusHeight.IsZero() {
+		return nil, nil, nil
 	}
 
-	key := host.FullClientKey(clientID, ibctm.ProcessedHeightKey(&consensusHeight))
+	key := host.FullClientKey(clientID, ibctm.ProcessedHeightKey(&resp.ConsensusHeight))
 	bz, _, err := chain.QueryStateAtHeight(key, chain.LastHeader.Header.Height, false)
 	if err != nil {
-		return nil, nil, err
+		e := fmt.Errorf("QueryNextConsensusHeight: %s", err)
+		return nil, nil, e
 	}
 	proofHeight, err := clienttypes.ParseHeight(string(bz))
 	if err != nil {
-		return nil, nil, err
+		e := fmt.Errorf("QueryNextConsensusHeight: %s", err)
+		return nil, nil, e
 	}
 
-	// debug code
-	// fmt.Printf("Minimum proof height is %v on chain %s for consensus height: %v [minHeight=%v, maxHeight=%v]\n",
-	// 	proofHeight, chain.ChainID, consensusHeight, minConsensusHeight, maxConsensusHeight)
-	return proofHeight, consensusHeight, nil
+	return proofHeight, resp.ConsensusHeight, nil
+}
+
+// QueryMinimumConsensusHeight returns the minimum height within the provided range at which the consensusState exists. The function
+// scans existing consensusStates and finds the minimum consensus state height, H, satisfying: minHeight <= H < minHeight + limit
+// The processed height is then queried for the given consensusState to determine when it was processed on the chain.
+//
+// Returns:
+//
+//	The first returned height is the processed height for a consensusState.
+//	The second returned height is the minimum consensusState height falling within the provided height range.
+//	The third returned parameter is a boolean indicating whether a client update is required.
+func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minConsensusHeight exported.Height, limit uint64) (exported.Height, exported.Height, error) {
+
+	// search consensusStates to find the one with the minimum height in [minHeight, maxHeight]
+	consensusHeight := minConsensusHeight
+	for i := uint64(0); i < limit; i++ {
+		key := host.FullClientKey(clientID, ibctm.ProcessedHeightKey(consensusHeight))
+		bz, _, err := chain.QueryStateAtHeight(key, chain.LastHeader.Header.Height, false)
+		if err != nil {
+			e := fmt.Errorf("QueryMinimumConsensusHeight: %s", err)
+			return nil, nil, e
+		}
+		if bz != nil {
+			proofHeight, err := clienttypes.ParseHeight(string(bz))
+			if err != nil {
+				e := fmt.Errorf("QueryMinimumConsensusHeight: %s", err)
+				return nil, nil, e
+			}
+
+			// debug code
+			// fmt.Printf("Minimum proof height is %v on chain %s for consensus height: %v [minHeight=%v]\n",
+			// 	proofHeight, chain.ChainID, consensusHeight, minConsensusHeight)
+			return proofHeight, consensusHeight, nil
+		}
+		consensusHeight = consensusHeight.Increment()
+	}
+
+	return nil, nil, nil
 }
 
 // QueryProofForStore performs an abci query with the given key and returns the proto encoded merkle proof
