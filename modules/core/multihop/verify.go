@@ -15,8 +15,8 @@ import (
 	tmclient "github.com/cosmos/ibc-go/v7/modules/light-clients/07-tendermint"
 )
 
-// helper function to parse the client id from a consensus state key path
-func parseClientIDFromKey(keyPath []string) (string, error) {
+// helper function to parse a client or connection id from a key path
+func parseID(keyPath []string) (string, error) {
 	if len(keyPath) < 2 {
 		return "", fmt.Errorf(
 			"invalid consensus proof key path length: %d",
@@ -28,6 +28,16 @@ func parseClientIDFromKey(keyPath []string) (string, error) {
 		return "", fmt.Errorf("invalid consensus proof key path: %s", keyPath)
 	}
 	return parts[1], nil
+}
+
+// helper function to parse the client id from a consensus state key path
+func parseClientIDFromKey(keyPath []string) (string, error) {
+	return parseID(keyPath)
+}
+
+// Parse the connectionID from the connection proof key and return it.
+func parseConnectionIDFromKey(keyPath []string) (string, error) {
+	return parseID(keyPath)
 }
 
 // VerifyDelayPeriodPassed will ensure that at least delayTimePeriod amount of time and delayBlockPeriod number of blocks have passed
@@ -135,12 +145,17 @@ func verifyConnectionStates(
 
 		// Verify the rest of the connectionHops (first hop already verified)
 		// 1. check the connectionHop values match the proofs and are in the same order.
-		parts := strings.Split(connData.PrefixedKey.GetKeyPath()[len(connData.PrefixedKey.KeyPath)-1], "/")
-		if parts[len(parts)-1] != connectionHops[i+1] {
+		connectionID, err := parseConnectionIDFromKey(connData.PrefixedKey.KeyPath)
+		if err != nil {
+			return err
+		}
+
+		// parts := strings.Split(connData.PrefixedKey.GetKeyPath()[len(connData.PrefixedKey.KeyPath)-1], "/")
+		if connectionID != connectionHops[i+1] {
 			return sdkerrors.Wrapf(
 				connectiontypes.ErrConnectionPath,
 				"connectionHops (%s) does not match connection proof hop (%s) for hop %d",
-				connectionHops[i+1], parts[len(parts)-1], i)
+				connectionHops[i+1], connectionID, i)
 		}
 
 		// 2. check that the connectionEnd's are in the OPEN state.
