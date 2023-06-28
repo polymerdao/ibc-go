@@ -25,7 +25,11 @@ type Endpoint interface {
 
 	// QueryMinimumConsensusHeight returns the minimum height within the provided range at which the consensusState exists (processedHeight)
 	// and the corresponding consensus state height (consensusHeight).
-	QueryMinimumConsensusHeight(minConsensusHeight exported.Height, maxConsensusHeight exported.Height) (exported.Height, exported.Height, error)
+	QueryMinimumConsensusHeight(minConsensusHeight exported.Height, limit uint64) (exported.Height, exported.Height, error)
+
+	// QueryNextConsensusHeight returns the processed height and consensus state height next consensus height for the next consensus state
+	// after the provided consensus state height.
+	QueryNextConsensusHeight(minConsensusHeight exported.Height) (exported.Height, exported.Height, error)
 	GetMerklePath(path string) (commitmenttypes.MerklePath, error)
 	Counterparty() Endpoint
 	UpdateClient() error
@@ -148,9 +152,14 @@ func (p ChanPath) calcProofPath(pathIdx int, consensusHeight exported.Height, pr
 	chain := p.Paths[pathIdx].EndpointB
 
 	// find minimum consensus height provable on the next chain
-	if height.proofHeight, height.consensusHeight, err = chain.QueryMinimumConsensusHeight(consensusHeight, nil); err != nil {
+	if height.proofHeight, height.consensusHeight, err = chain.QueryMinimumConsensusHeight(consensusHeight, 3); err != nil {
 		return
 	}
+
+	// optimized consensus height query
+	// if height.proofHeight, height.consensusHeight, err = chain.QueryNextConsensusHeight(consensusHeight); err != nil {
+	// 	return
+	// }
 
 	// if no suitable consensusHeight then update client and use latest chain height/client height
 	//
@@ -197,15 +206,15 @@ func (p ChanPath) queryIntermediateProofs(
 	}
 
 	chain := p.Paths[proofIdx].EndpointB
-	mhp := proofHeights[proofIdx]
+	ph := proofHeights[proofIdx]
 
 	// query proof of the consensusState
-	if consensusProofs[len(p.Paths)-proofIdx-2], err = queryConsensusStateProof(chain, mhp.proofHeight, mhp.consensusHeight); err != nil {
+	if consensusProofs[len(p.Paths)-proofIdx-2], err = queryConsensusStateProof(chain, ph.proofHeight, ph.consensusHeight); err != nil {
 		return
 	}
 
 	// query proof of the connectionEnd
-	if connectionProofs[len(p.Paths)-proofIdx-2], err = queryConnectionProof(chain, mhp.proofHeight); err != nil {
+	if connectionProofs[len(p.Paths)-proofIdx-2], err = queryConnectionProof(chain, ph.proofHeight); err != nil {
 		return
 	}
 
