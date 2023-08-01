@@ -275,8 +275,8 @@ message MultihopProof {
   option (gogoproto.goproto_getters) = false;
 
   bytes proof = 2;
-	bytes value = 3;
-	ibc.core.commitment.v1.MerklePath prefixed_key = 4;
+  bytes value = 3;
+  ibc.core.commitment.v1.MerklePath prefixed_key = 4;
 }
 
 // MsgMultihopProofs holds the proof information for each intermediary hop for a multihop message

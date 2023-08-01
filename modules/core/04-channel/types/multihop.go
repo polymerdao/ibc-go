@@ -59,16 +59,16 @@ func (m *MsgMultihopProofs) GetMaximumDelayPeriod(
 func (m *MsgMultihopProofs) GetCounterpartyHops(
 	cdc codec.BinaryCodec,
 	lastConnection *ConnectionEnd,
-) (counterpartyHops []string, err error) {
-	var connectionEnd ConnectionEnd
+) ([]string, error) {
+
+	counterpartyHops := []string{lastConnection.GetCounterparty().GetConnectionID()}
 	for _, connData := range m.ConnectionProofs {
-		if err = cdc.Unmarshal(connData.Value, &connectionEnd); err != nil {
+		var connectionEnd ConnectionEnd
+		if err := cdc.Unmarshal(connData.Value, &connectionEnd); err != nil {
 			return nil, err
 		}
 		counterpartyHops = append([]string{connectionEnd.GetCounterparty().GetConnectionID()}, counterpartyHops...)
 	}
-
-	counterpartyHops = append(counterpartyHops, lastConnection.GetCounterparty().GetConnectionID())
 
 	return counterpartyHops, nil
 }
