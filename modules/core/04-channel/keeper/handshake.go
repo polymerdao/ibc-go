@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/telemetry"
@@ -133,6 +134,7 @@ func (k Keeper) ChanOpenTry(
 	proofInit []byte,
 	proofHeight exported.Height,
 ) (string, *capabilitytypes.Capability, error) {
+	fmt.Printf("zf debug - Keeper.ChanOpenTry - cp 1 connectionHops: %+v\n", connectionHops)
 
 	// generate a new channel
 	channelID := k.GenerateChannelIdentifier(ctx)
@@ -152,12 +154,24 @@ func (k Keeper) ChanOpenTry(
 		return "", nil, sdkerrors.Wrap(connectiontypes.ErrConnectionNotFound, connectionHops[0])
 	}
 
+	fmt.Printf("zf debug - Keeper.ChanOpenTry - got connectionEnd for '%s'\n", connectionHops[0])
+	{
+		bs, err := json.Marshal(connectionEnd)
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("zf debug - Keeper.ChanOpenTry - connectionEnd:\n%s\n", string(bs))
+	}
+
 	if connectionEnd.GetState() != int32(connectiontypes.OPEN) {
 		return "", nil, sdkerrors.Wrapf(
 			connectiontypes.ErrInvalidConnectionState,
 			"connection state is not OPEN (got %s)", connectiontypes.State(connectionEnd.GetState()).String(),
 		)
 	}
+
+	fmt.Printf("zf debug - Keeper.ChanOpenTry - cp2\n")
 
 	// check version support
 	versionCheckFunc := func(connection *connectiontypes.ConnectionEnd) error {

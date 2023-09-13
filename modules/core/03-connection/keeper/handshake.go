@@ -1,6 +1,8 @@
 package keeper
 
 import (
+	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/telemetry"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
@@ -253,6 +255,8 @@ func (k Keeper) ConnOpenAck(
 	connection.Counterparty.ConnectionId = counterpartyConnectionID
 	k.SetConnection(ctx, connectionID, connection)
 
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenAck - cp1 - set conn state to OPEN, connID:%s\n", connectionID)
+
 	EmitConnectionOpenAckEvent(ctx, connectionID, connection)
 
 	return nil
@@ -298,6 +302,8 @@ func (k Keeper) ConnOpenConfirm(
 	connection.State = types.OPEN
 	k.SetConnection(ctx, connectionID, connection)
 	k.Logger(ctx).Info("connection state updated", "connection-id", connectionID, "previous-state", "TRYOPEN", "new-state", "OPEN")
+
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenConfirm - cp1 - set conn state to OPEN, connID:%s\n", connectionID)
 
 	defer func() {
 		telemetry.IncrCounter(1, "ibc", "connection", "open-confirm")
