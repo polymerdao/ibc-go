@@ -25,6 +25,8 @@ func (k Keeper) ConnOpenInit(
 	version *types.Version,
 	delayPeriod uint64,
 ) (string, error) {
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenInit - cp1 - clientID:%s\n", clientID)
+
 	versions := types.GetCompatibleVersions()
 	if version != nil {
 		if !types.IsSupportedVersion(types.GetCompatibleVersions(), version) {
@@ -82,6 +84,8 @@ func (k Keeper) ConnOpenTry(
 	proofHeight exported.Height, // height at which relayer constructs proof of A storing connectionEnd in state
 	consensusHeight exported.Height, // latest height of chain B which chain A has stored in its chain B client
 ) (string, error) {
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenTry - cp1 - clientID:%s\n", clientID)
+
 	// generate a new connection
 	connectionID := k.GenerateConnectionIdentifier(ctx)
 
@@ -176,6 +180,8 @@ func (k Keeper) ConnOpenAck(
 	proofHeight exported.Height, // height that relayer constructed proofTry
 	consensusHeight exported.Height, // latest height of chainA that chainB has stored on its chainA client
 ) error {
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenAck - cp1 - connID:%s\n", connectionID)
+
 	// check that the consensus height the counterparty chain is using to store a representation
 	// of this chain's consensus state is at a height in the past
 	selfHeight := clienttypes.GetSelfHeight(ctx)
@@ -255,7 +261,7 @@ func (k Keeper) ConnOpenAck(
 	connection.Counterparty.ConnectionId = counterpartyConnectionID
 	k.SetConnection(ctx, connectionID, connection)
 
-	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenAck - cp1 - set conn state to OPEN, connID:%s\n", connectionID)
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenAck - cp2 - set conn state to OPEN, connID:%s\n", connectionID)
 
 	EmitConnectionOpenAckEvent(ctx, connectionID, connection)
 
@@ -272,6 +278,8 @@ func (k Keeper) ConnOpenConfirm(
 	proofAck []byte, // proof that connection opened on ChainA during ConnOpenAck
 	proofHeight exported.Height, // height that relayer constructed proofAck
 ) error {
+	fmt.Printf("zf debug - 03-connection.Keeper.ConnOpenConfirm - cp1 - connID:%s\n", connectionID)
+
 	// Retrieve connection
 	connection, found := k.GetConnection(ctx, connectionID)
 	if !found {
