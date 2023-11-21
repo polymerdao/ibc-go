@@ -230,6 +230,35 @@ func IterateConsensusStateAscending(clientStore storetypes.KVStore, cb func(heig
 	}
 }
 
+// GetNextConsensusStateHeight returns the height of the lowest consensus state that is larger than the given height.
+// The Iterator returns a storetypes.Iterator which iterates from start (inclusive) to end (exclusive).
+// If the starting height exists in store, we need to call iterator.Next() to get the next consenus state.
+// Otherwise, the iterator is already at the next consensus state so we can call iterator.Value() immediately.
+func GetNextConsensusStateHeight(clientStore storetypes.KVStore, cdc codec.BinaryCodec, height exported.Height) (exported.Height, bool) {
+	iterateStore := prefix.NewStore(clientStore, []byte(KeyIterateConsensusStatePrefix))
+	iterator := iterateStore.Iterator(bigEndianHeightBytes(height), nil)
+	defer iterator.Close()
+	if !iterator.Valid() {
+		return nil, false
+	}
+
+	// if iterator is at current height, ignore the consensus state at current height and get next height
+	// if iterator value is not at current height, it is already at next height.
+	if bytes.Equal(iterator.Value(), host.ConsensusStateKey(height)) {
+		iterator.Next()
+		if !iterator.Valid() {
+			return nil, false
+		}
+	}
+
+	height = bigEndianBytesToHeight(iterator.Key())
+	if height == nil {
+		return nil, false
+	}
+
+	return height, true
+}
+
 // GetNextConsensusState returns the lowest consensus state that is larger than the given height.
 // The Iterator returns a storetypes.Iterator which iterates from start (inclusive) to end (exclusive).
 // If the starting height exists in store, we need to call iterator.Next() to get the next consenus state.
@@ -329,6 +358,12 @@ func bigEndianHeightBytes(height exported.Height) []byte {
 	binary.BigEndian.PutUint64(heightBytes, height.GetRevisionNumber())
 	binary.BigEndian.PutUint64(heightBytes[8:], height.GetRevisionHeight())
 	return heightBytes
+}
+
+func bigEndianBytesToHeight(bytes []byte) exported.Height {
+	revisionNumber := binary.BigEndian.Uint64(bytes[:8])
+	revisionHeight := binary.BigEndian.Uint64(bytes[8:])
+	return clienttypes.NewHeight(revisionNumber, revisionHeight)
 }
 
 // setConsensusMetadata sets context time as processed time and set context height as processed height
