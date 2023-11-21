@@ -224,7 +224,7 @@ func (cs ClientState) VerifyMembership(
 		)
 	}
 
-	if err := verifyDelayPeriodPassed(ctx, clientStore, height, delayTimePeriod, delayBlockPeriod); err != nil {
+	if err := VerifyDelayPeriodPassed(ctx, clientStore, height, delayTimePeriod, delayBlockPeriod); err != nil {
 		return err
 	}
 
@@ -266,7 +266,7 @@ func (cs ClientState) VerifyNonMembership(
 		)
 	}
 
-	if err := verifyDelayPeriodPassed(ctx, clientStore, height, delayTimePeriod, delayBlockPeriod); err != nil {
+	if err := VerifyDelayPeriodPassed(ctx, clientStore, height, delayTimePeriod, delayBlockPeriod); err != nil {
 		return err
 	}
 
@@ -290,7 +290,7 @@ func (cs ClientState) VerifyNonMembership(
 
 // verifyDelayPeriodPassed will ensure that at least delayTimePeriod amount of time and delayBlockPeriod number of blocks have passed
 // since consensus state was submitted before allowing verification to continue.
-func verifyDelayPeriodPassed(ctx sdk.Context, store storetypes.KVStore, proofHeight exported.Height, delayTimePeriod, delayBlockPeriod uint64) error {
+func VerifyDelayPeriodPassed(ctx sdk.Context, store storetypes.KVStore, proofHeight exported.Height, delayTimePeriod, delayBlockPeriod uint64) error {
 	if delayTimePeriod != 0 {
 		// check that executing chain's timestamp has passed consensusState's processed time + delay time period
 		processedTime, ok := GetProcessedTime(store, proofHeight)
