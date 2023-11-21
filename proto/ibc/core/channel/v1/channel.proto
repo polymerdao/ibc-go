@@ -65,6 +65,9 @@ enum State {
   // A channel has been closed and can no longer be used to send or receive
   // packets.
   STATE_CLOSED = 4 [(gogoproto.enumvalue_customname) = "CLOSED"];
+  // A channel has been forced closed due to a frozen client in the connection
+	// path.
+  STATE_FROZEN = 5 [(gogoproto.enumvalue_customname) = "FROZEN"];
 }
 
 // Order defines if a channel is ORDERED or UNORDERED
