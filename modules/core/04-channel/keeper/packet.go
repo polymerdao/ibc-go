@@ -61,40 +61,43 @@ func (k Keeper) SendPacket(
 		return 0, errorsmod.Wrap(err, "constructed packet failed basic validation")
 	}
 
-	connectionEnd, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
-	if !found {
-		return 0, errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, channel.ConnectionHops[0])
-	}
+	// Can not perform these extra checks when sending a multihop packet since the connectionEnd will not be known.
+	if len(channel.ConnectionHops) == 1 {
+		connectionEnd, found := k.connectionKeeper.GetConnection(ctx, channel.ConnectionHops[0])
+		if !found {
+			return 0, errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, channel.ConnectionHops[0])
+		}
 
-	clientState, found := k.clientKeeper.GetClientState(ctx, connectionEnd.GetClientID())
-	if !found {
-		return 0, clienttypes.ErrClientNotFound
-	}
+		clientState, found := k.clientKeeper.GetClientState(ctx, connectionEnd.GetClientID())
+		if !found {
+			return 0, clienttypes.ErrClientNotFound
+		}
 
-	// prevent accidental sends with clients that cannot be updated
-	if status := k.clientKeeper.GetClientStatus(ctx, clientState, connectionEnd.GetClientID()); status != exported.Active {
-		return 0, errorsmod.Wrapf(clienttypes.ErrClientNotActive, "cannot send packet using client (%s) with status %s", connectionEnd.GetClientID(), status)
-	}
+		// prevent accidental sends with clients that cannot be updated
+		if status := k.clientKeeper.GetClientStatus(ctx, clientState, connectionEnd.GetClientID()); status != exported.Active {
+			return 0, errorsmod.Wrapf(clienttypes.ErrClientNotActive, "cannot send packet using client (%s) with status %s", connectionEnd.GetClientID(), status)
+		}
 
-	// check if packet is timed out on the receiving chain
-	latestHeight := clientState.GetLatestHeight()
-	if !timeoutHeight.IsZero() && latestHeight.GTE(timeoutHeight) {
-		return 0, errorsmod.Wrapf(
-			types.ErrPacketTimeout,
-			"receiving chain block height >= packet timeout height (%s >= %s)", latestHeight, timeoutHeight,
-		)
-	}
+		// check if packet is timed out on the receiving chain
+		latestHeight := clientState.GetLatestHeight()
+		if !timeoutHeight.IsZero() && latestHeight.GTE(timeoutHeight) {
+			return 0, errorsmod.Wrapf(
+				types.ErrPacketTimeout,
+				"receiving chain block height >= packet timeout height (%s >= %s)", latestHeight, timeoutHeight,
+			)
+		}
 
-	latestTimestamp, err := k.connectionKeeper.GetTimestampAtHeight(ctx, connectionEnd, latestHeight)
-	if err != nil {
-		return 0, err
-	}
+		latestTimestamp, err := k.connectionKeeper.GetTimestampAtHeight(ctx, connectionEnd, latestHeight)
+		if err != nil {
+			return 0, err
+		}
 
-	if packet.GetTimeoutTimestamp() != 0 && latestTimestamp >= packet.GetTimeoutTimestamp() {
-		return 0, errorsmod.Wrapf(
-			types.ErrPacketTimeout,
-			"receiving chain block timestamp >= packet timeout timestamp (%s >= %s)", time.Unix(0, int64(latestTimestamp)).UTC(), time.Unix(0, int64(packet.GetTimeoutTimestamp())).UTC(),
-		)
+		if packet.GetTimeoutTimestamp() != 0 && latestTimestamp >= packet.GetTimeoutTimestamp() {
+			return 0, errorsmod.Wrapf(
+				types.ErrPacketTimeout,
+				"receiving chain block timestamp >= packet timeout timestamp (%s >= %s)", time.Unix(0, int64(latestTimestamp)).UTC(), time.Unix(0, int64(packet.GetTimeoutTimestamp())).UTC(),
+			)
+		}
 	}
 
 	commitment := types.CommitPacket(k.cdc, packet)
@@ -194,15 +197,36 @@ func (k Keeper) RecvPacket(
 		)
 	}
 
-	commitment := types.CommitPacket(k.cdc, packet)
+	if len(channel.ConnectionHops) > 1 {
 
-	// verify that the counterparty did commit to sending this packet
-	if err := k.connectionKeeper.VerifyPacketCommitment(
-		ctx, connectionEnd, proofHeight, proof,
-		packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(),
-		commitment,
-	); err != nil {
-		return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
+		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+			key := host.PacketCommitmentPath(
+				packet.GetSourcePort(),
+				packet.GetSourceChannel(),
+				packet.GetSequence(),
+			)
+			commitment := types.CommitPacket(k.cdc, packet)
+			return key, commitment, nil
+		}
+
+		if err := k.connectionKeeper.VerifyMultihopMembership(
+			ctx, connectionEnd, proofHeight, proof,
+			channel.ConnectionHops, kvGenerator,
+		); err != nil {
+			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
+		}
+	} else {
+
+		commitment := types.CommitPacket(k.cdc, packet)
+
+		// verify that the counterparty did commit to sending this packet
+		if err := k.connectionKeeper.VerifyPacketCommitment(
+			ctx, connectionEnd, proofHeight, proof,
+			packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(),
+			commitment,
+		); err != nil {
+			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
+		}
 	}
 
 	switch channel.Ordering {
@@ -432,11 +456,32 @@ func (k Keeper) AcknowledgePacket(
 		return errorsmod.Wrapf(types.ErrInvalidPacket, "commitment bytes are not equal: got (%v), expected (%v)", packetCommitment, commitment)
 	}
 
-	if err := k.connectionKeeper.VerifyPacketAcknowledgement(
-		ctx, connectionEnd, proofHeight, proof, packet.GetDestPort(), packet.GetDestChannel(),
-		packet.GetSequence(), acknowledgement,
-	); err != nil {
-		return err
+	if len(channel.ConnectionHops) > 1 { // verify multihop proof
+
+		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+			key := host.PacketAcknowledgementPath(
+				packet.GetDestPort(),
+				packet.GetDestChannel(),
+				packet.GetSequence(),
+			)
+			ackCommitment := types.CommitAcknowledgement(acknowledgement)
+			return key, ackCommitment, nil
+		}
+
+		if err := k.connectionKeeper.VerifyMultihopMembership(
+			ctx, connectionEnd, proofHeight, proof,
+			channel.ConnectionHops, kvGenerator,
+		); err != nil {
+			return err
+		}
+
+	} else {
+		if err := k.connectionKeeper.VerifyPacketAcknowledgement(
+			ctx, connectionEnd, proofHeight, proof, packet.GetDestPort(), packet.GetDestChannel(),
+			packet.GetSequence(), acknowledgement,
+		); err != nil {
+			return err
+		}
 	}
 
 	// assert packets acknowledged in order
