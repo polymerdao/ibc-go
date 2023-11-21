@@ -69,12 +69,6 @@ func (ch Channel) ValidateBasic() error {
 	if !(ch.Ordering == ORDERED || ch.Ordering == UNORDERED) {
 		return errorsmod.Wrap(ErrInvalidChannelOrdering, ch.Ordering.String())
 	}
-	if len(ch.ConnectionHops) != 1 {
-		return errorsmod.Wrap(
-			ErrTooManyConnectionHops,
-			"current IBC version only supports one connection hop",
-		)
-	}
 	if err := host.ConnectionIdentifierValidator(ch.ConnectionHops[0]); err != nil {
 		return errorsmod.Wrap(err, "invalid connection hop ID")
 	}
