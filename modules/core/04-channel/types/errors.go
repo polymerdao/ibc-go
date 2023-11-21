@@ -40,4 +40,9 @@ var (
 	ErrInvalidChannelVersion = errorsmod.Register(SubModuleName, 24, "invalid channel version")
 	ErrPacketNotSent         = errorsmod.Register(SubModuleName, 25, "packet has not been sent")
 	ErrInvalidTimeout        = errorsmod.Register(SubModuleName, 26, "invalid packet timeout")
+
+	// Multihop errors
+	ErrInvalidHopLength          = errorsmod.Register(SubModuleName, 27, "invalid hop length (at least 2 paths required)")
+	ErrMultihopProofGeneration   = errorsmod.Register(SubModuleName, 28, "multihop proof generation failed")
+	ErrMultihopProofVerification = errorsmod.Register(SubModuleName, 29, "multihop proof verification failed")
 )

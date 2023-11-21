@@ -18,7 +18,7 @@ func emitChannelOpenInitEvent(ctx sdk.Context, portID string, channelID string, 
 			sdk.NewAttribute(types.AttributeKeyPortID, portID),
 			sdk.NewAttribute(types.AttributeKeyChannelID, channelID),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 			sdk.NewAttribute(types.AttributeVersion, channel.Version),
 		),
 		sdk.NewEvent(
@@ -37,7 +37,7 @@ func emitChannelOpenTryEvent(ctx sdk.Context, portID string, channelID string, c
 			sdk.NewAttribute(types.AttributeKeyChannelID, channelID),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
 			sdk.NewAttribute(types.AttributeCounterpartyChannelID, channel.Counterparty.ChannelId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 			sdk.NewAttribute(types.AttributeVersion, channel.Version),
 		),
 		sdk.NewEvent(
@@ -56,7 +56,7 @@ func emitChannelOpenAckEvent(ctx sdk.Context, portID string, channelID string, c
 			sdk.NewAttribute(types.AttributeKeyChannelID, channelID),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
 			sdk.NewAttribute(types.AttributeCounterpartyChannelID, channel.Counterparty.ChannelId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -74,7 +74,7 @@ func emitChannelOpenConfirmEvent(ctx sdk.Context, portID string, channelID strin
 			sdk.NewAttribute(types.AttributeKeyChannelID, channelID),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
 			sdk.NewAttribute(types.AttributeCounterpartyChannelID, channel.Counterparty.ChannelId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -92,7 +92,7 @@ func emitChannelCloseInitEvent(ctx sdk.Context, portID string, channelID string,
 			sdk.NewAttribute(types.AttributeKeyChannelID, channelID),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
 			sdk.NewAttribute(types.AttributeCounterpartyChannelID, channel.Counterparty.ChannelId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -110,7 +110,7 @@ func emitChannelCloseConfirmEvent(ctx sdk.Context, portID string, channelID stri
 			sdk.NewAttribute(types.AttributeKeyChannelID, channelID),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
 			sdk.NewAttribute(types.AttributeCounterpartyChannelID, channel.Counterparty.ChannelId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -137,8 +137,8 @@ func emitSendPacketEvent(ctx sdk.Context, packet exported.PacketI, channel types
 			sdk.NewAttribute(types.AttributeKeyChannelOrdering, channel.Ordering.String()),
 			// we only support 1-hop packets now, and that is the most important hop for a relayer
 			// (is it going to a chain I am connected to)
-			sdk.NewAttribute(types.AttributeKeyConnection, channel.ConnectionHops[0]), // DEPRECATED
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnection, types.FormatConnectionID(channel.ConnectionHops)), // DEPRECATED
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -165,8 +165,8 @@ func emitRecvPacketEvent(ctx sdk.Context, packet exported.PacketI, channel types
 			sdk.NewAttribute(types.AttributeKeyChannelOrdering, channel.Ordering.String()),
 			// we only support 1-hop packets now, and that is the most important hop for a relayer
 			// (is it going to a chain I am connected to)
-			sdk.NewAttribute(types.AttributeKeyConnection, channel.ConnectionHops[0]), // DEPRECATED
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnection, types.FormatConnectionID(channel.ConnectionHops)), // DEPRECATED
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -193,8 +193,8 @@ func emitWriteAcknowledgementEvent(ctx sdk.Context, packet exported.PacketI, cha
 			sdk.NewAttribute(types.AttributeKeyAckHex, hex.EncodeToString(acknowledgement)),
 			// we only support 1-hop packets now, and that is the most important hop for a relayer
 			// (is it going to a chain I am connected to)
-			sdk.NewAttribute(types.AttributeKeyConnection, channel.ConnectionHops[0]), // DEPRECATED
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnection, types.FormatConnectionID(channel.ConnectionHops)), // DEPRECATED
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -219,8 +219,8 @@ func emitAcknowledgePacketEvent(ctx sdk.Context, packet exported.PacketI, channe
 			sdk.NewAttribute(types.AttributeKeyChannelOrdering, channel.Ordering.String()),
 			// we only support 1-hop packets now, and that is the most important hop for a relayer
 			// (is it going to a chain I am connected to)
-			sdk.NewAttribute(types.AttributeKeyConnection, channel.ConnectionHops[0]), // DEPRECATED
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnection, types.FormatConnectionID(channel.ConnectionHops)), // DEPRECATED
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 		),
 		sdk.NewEvent(
 			sdk.EventTypeMessage,
@@ -242,7 +242,7 @@ func emitTimeoutPacketEvent(ctx sdk.Context, packet exported.PacketI, channel ty
 			sdk.NewAttribute(types.AttributeKeySrcChannel, packet.GetSourceChannel()),
 			sdk.NewAttribute(types.AttributeKeyDstPort, packet.GetDestPort()),
 			sdk.NewAttribute(types.AttributeKeyDstChannel, packet.GetDestChannel()),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 			sdk.NewAttribute(types.AttributeKeyChannelOrdering, channel.Ordering.String()),
 		),
 		sdk.NewEvent(
@@ -261,7 +261,7 @@ func emitChannelClosedEvent(ctx sdk.Context, packet exported.PacketI, channel ty
 			sdk.NewAttribute(types.AttributeKeyChannelID, packet.GetSourceChannel()),
 			sdk.NewAttribute(types.AttributeCounterpartyPortID, channel.Counterparty.PortId),
 			sdk.NewAttribute(types.AttributeCounterpartyChannelID, channel.Counterparty.ChannelId),
-			sdk.NewAttribute(types.AttributeKeyConnectionID, channel.ConnectionHops[0]),
+			sdk.NewAttribute(types.AttributeKeyConnectionID, types.FormatConnectionID(channel.ConnectionHops)),
 			sdk.NewAttribute(types.AttributeKeyChannelOrdering, channel.Ordering.String()),
 		),
 		sdk.NewEvent(
