@@ -303,6 +303,59 @@ func (msg MsgChannelCloseConfirm) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{signer}
 }
 
+var _ sdk.Msg = &MsgChannelCloseFrozen{}
+
+// NewMsgChannelCloseFrozen creates a new MsgChannelCloseFrozen instance
+//
+//nolint:interfacer
+func NewMsgChannelCloseFrozen(
+	portID, channelID string,
+	proofConnection []byte,
+	proofClientState []byte,
+	proofHeight clienttypes.Height,
+	signer string,
+) *MsgChannelCloseFrozen {
+	return &MsgChannelCloseFrozen{
+		PortId:           portID,
+		ChannelId:        channelID,
+		ProofConnection:  proofConnection,
+		ProofClientState: proofClientState,
+		ProofHeight:      proofHeight,
+		Signer:           signer,
+	}
+}
+
+// ValidateBasic implements sdk.Msg
+func (msg MsgChannelCloseFrozen) ValidateBasic() error {
+	if err := host.PortIdentifierValidator(msg.PortId); err != nil {
+		return errorsmod.Wrap(err, "invalid port ID")
+	}
+	if !IsValidChannelID(msg.ChannelId) {
+		return ErrInvalidChannelIdentifier
+	}
+	if len(msg.ProofConnection) == 0 {
+		return errorsmod.Wrap(commitmenttypes.ErrInvalidProof, "cannot submit an empty connection proof")
+	}
+	if len(msg.ProofClientState) == 0 {
+		return errorsmod.Wrap(commitmenttypes.ErrInvalidProof, "cannot submit an empty client state proof")
+	}
+
+	_, err := sdk.AccAddressFromBech32(msg.Signer)
+	if err != nil {
+		return errorsmod.Wrapf(ibcerrors.ErrInvalidAddress, "string could not be parsed as address: %v", err)
+	}
+	return nil
+}
+
+// GetSigners implements sdk.Msg
+func (msg MsgChannelCloseFrozen) GetSigners() []sdk.AccAddress {
+	signer, err := sdk.AccAddressFromBech32(msg.Signer)
+	if err != nil {
+		panic(err)
+	}
+	return []sdk.AccAddress{signer}
+}
+
 // NewMsgRecvPacket constructs new MsgRecvPacket
 func NewMsgRecvPacket(
 	packet Packet, proofCommitment []byte, proofHeight clienttypes.Height,
