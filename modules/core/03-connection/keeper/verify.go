@@ -1,6 +1,7 @@
 package keeper
 
 import (
+	"fmt"
 	"math"
 
 	errorsmod "cosmossdk.io/errors"
@@ -13,6 +14,7 @@ import (
 	channeltypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
+	mh "github.com/cosmos/ibc-go/v8/modules/core/33-multihop"
 	ibcerrors "github.com/cosmos/ibc-go/v8/modules/core/errors"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
@@ -364,6 +366,142 @@ func (k Keeper) VerifyNextSequenceRecv(
 	}
 
 	return nil
+}
+
+// VerifyMultihopMembership verifies a multi-hop membership proof.
+func (k Keeper) VerifyMultihopMembership(
+	ctx sdk.Context,
+	connection exported.ConnectionI,
+	height exported.Height,
+	proof []byte,
+	connectionHops []string,
+	kvGenerator channeltypes.KeyValueGenFunc,
+) error {
+
+	var mProof channeltypes.MsgMultihopProofs
+	if err := k.cdc.Unmarshal(proof, &mProof); err != nil {
+		return err
+	}
+
+	multihopConnectionEnd, err := mProof.GetMultihopConnectionEnd(k.cdc, connection)
+	if err != nil {
+		return err
+	}
+
+	key, value, err := kvGenerator(&mProof, multihopConnectionEnd)
+	if err != nil {
+		return fmt.Errorf("failed to generate key and value: %s", err)
+	}
+
+	prefix := multihopConnectionEnd.GetCounterparty().GetPrefix()
+	clientID := connection.GetClientID()
+	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
+
+	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
+	if !found {
+		return errorsmod.Wrap(clienttypes.ErrClientNotFound, clientID)
+	}
+
+	// check last client is active
+	if status := clientState.Status(ctx, clientStore, k.cdc); status != exported.Active {
+		return errorsmod.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
+	}
+
+	if clientState.GetLatestHeight().LT(height) {
+		return errorsmod.Wrapf(
+			clienttypes.ErrInvalidHeight,
+			"client state height < proof height (%d < %d), please ensure the client has been updated",
+			clientState.GetLatestHeight(), height,
+		)
+	}
+
+	delayPeriod, err := mProof.GetMaximumDelayPeriod(k.cdc, connection)
+	if err != nil {
+		return err
+	}
+
+	expectedTimePerBlock := k.GetParams(ctx).MaxExpectedTimePerBlock
+
+	// ensure the delayPeriod passed
+	if err := mh.VerifyDelayPeriodPassed(ctx, clientStore, height, delayPeriod, expectedTimePerBlock); err != nil {
+		return err
+	}
+
+	consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, clientID, height)
+	if !found {
+		return errorsmod.Wrapf(clienttypes.ErrConsensusStateNotFound,
+			"consensus state not found for client id: %s", clientID)
+	}
+
+	return mh.VerifyMultihopMembership(k.cdc, consensusState, connectionHops, &mProof, prefix, key, value)
+}
+
+// VerifyMultihopNonMembership verifies a multi-hop non-membership proof.
+func (k Keeper) VerifyMultihopNonMembership(
+	ctx sdk.Context,
+	connection exported.ConnectionI,
+	height exported.Height,
+	proof []byte,
+	connectionHops []string,
+	kvGenerator channeltypes.KeyGenFunc,
+) error {
+
+	var mProof channeltypes.MsgMultihopProofs
+	if err := k.cdc.Unmarshal(proof, &mProof); err != nil {
+		return err
+	}
+
+	multihopConnectionEnd, err := mProof.GetMultihopConnectionEnd(k.cdc, connection)
+	if err != nil {
+		return err
+	}
+
+	key, err := kvGenerator(&mProof, multihopConnectionEnd)
+	if err != nil {
+		return fmt.Errorf("failed to generate key: %s", err)
+	}
+
+	prefix := multihopConnectionEnd.GetCounterparty().GetPrefix()
+	clientID := connection.GetClientID()
+	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
+
+	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
+	if !found {
+		return errorsmod.Wrap(clienttypes.ErrClientNotFound, clientID)
+	}
+
+	// check last client is active
+	if status := clientState.Status(ctx, clientStore, k.cdc); status != exported.Active {
+		return errorsmod.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
+	}
+
+	if clientState.GetLatestHeight().LT(height) {
+		return errorsmod.Wrapf(
+			clienttypes.ErrInvalidHeight,
+			"client state height < proof height (%d < %d), please ensure the client has been updated",
+			clientState.GetLatestHeight(), height,
+		)
+	}
+
+	delayPeriod, err := mProof.GetMaximumDelayPeriod(k.cdc, connection)
+	if err != nil {
+		return err
+	}
+
+	expectedTimePerBlock := k.GetParams(ctx).MaxExpectedTimePerBlock
+
+	// ensure the delayPeriod passed
+	if err := mh.VerifyDelayPeriodPassed(ctx, clientStore, height, delayPeriod, expectedTimePerBlock); err != nil {
+		return err
+	}
+
+	consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, clientID, height)
+	if !found {
+		return errorsmod.Wrapf(clienttypes.ErrConsensusStateNotFound,
+			"consensus state not found for client id: %s", clientID)
+	}
+
+	return mh.VerifyMultihopNonMembership(k.cdc, consensusState, connectionHops, &mProof, prefix, key)
 }
 
 // getBlockDelay calculates the block delay period from the time delay of the connection
