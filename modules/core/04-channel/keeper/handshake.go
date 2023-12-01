@@ -152,57 +152,34 @@ func (k Keeper) ChanOpenTry(
 		)
 	}
 
-	// check version support
-	versionCheckFunc := func(connection *connectiontypes.ConnectionEnd) error {
-		getVersions := connection.GetVersions()
-		if len(getVersions) != 1 {
-			return errorsmod.Wrapf(
-				connectiontypes.ErrInvalidVersion,
-				"single version must be negotiated on connection before opening channel, got: %v",
-				getVersions,
-			)
-		}
-
-		// verify chain A supports the requested ordering.
-		if !connectiontypes.VerifySupportedFeature(getVersions[0], order.String()) {
-			return errorsmod.Wrapf(
-				connectiontypes.ErrInvalidVersion,
-				"connection version %s does not support channel ordering: %s",
-				getVersions[0], order.String(),
-			)
-		}
-		return nil
-	}
 	// handle multihop case
 	if len(connectionHops) > 1 {
-
-		kvGenerator := func(mProof *types.MsgMultihopProofs, multihopConnectionEnd *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(mProof *types.MsgMultihopProofs, lastHopConnectionEnd *connectiontypes.ConnectionEnd) (string, []byte, error) {
 			// check version support
-			if err := versionCheckFunc(multihopConnectionEnd); err != nil {
+			if err := checkVersion(lastHopConnectionEnd, order); err != nil {
 				return "", nil, err
 			}
 
+			// channel end storekey of the counterparty channel on the other end of the multihop channel
 			key := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
 
-			counterpartyHops, err := mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
+			// connection hops
+			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
 			if err != nil {
 				return "", nil, err
 			}
-			// expectedCounterparty is the counterparty of the counterparty's channel end
-			// (i.e self)
+
+			// expectedCounterparty is the counterparty of the counterparty's channel end (i.e self)
 			expectedCounterparty := types.NewCounterparty(portID, "")
-			expectedChannel := types.NewChannel(
-				types.INIT, order, expectedCounterparty,
-				counterpartyHops, counterpartyVersion,
-			)
+			expectedChannel := types.NewChannel(types.INIT, order, expectedCounterparty, counterpartyHops, counterpartyVersion)
 
 			// expected value bytes
-			value, err := expectedChannel.Marshal()
+			bz, err := k.cdc.Marshal(&expectedChannel)
 			if err != nil {
 				return "", nil, err
 			}
 
-			return key, value, nil
+			return key, bz, nil
 		}
 
 		if err := k.connectionKeeper.VerifyMultihopMembership(
@@ -212,17 +189,15 @@ func (k Keeper) ChanOpenTry(
 		}
 
 	} else {
-
 		// determine counterparty hops
 		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
 
-		// check versions
-		if err := versionCheckFunc(&connectionEnd); err != nil {
+		// check version support
+		if err := checkVersion(&connectionEnd, order); err != nil {
 			return "", nil, err
 		}
 
-		// expectedCounterparty is the counterparty of the counterparty's channel end
-		// (i.e self)
+		// expectedCounterparty is the counterparty of the counterparty's channel end (i.e self)
 		expectedCounterparty := types.NewCounterparty(portID, "")
 		expectedChannel := types.NewChannel(
 			types.INIT, order, expectedCounterparty,
@@ -319,7 +294,7 @@ func (k Keeper) ChanOpenAck(
 		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
 			key := host.ChannelPath(channel.Counterparty.PortId, counterpartyChannelID)
 
-			counterpartyHops, err := mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
 			if err != nil {
 				return "", nil, err
 			}
@@ -424,7 +399,7 @@ func (k Keeper) ChanOpenConfirm(
 		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
 			key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
 
-			counterpartyHops, err := mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
 			if err != nil {
 				return "", nil, err
 			}
@@ -579,7 +554,7 @@ func (k Keeper) ChanCloseConfirm(
 		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
 			key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
 
-			counterpartyHops, err := mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
 			if err != nil {
 				return "", nil, err
 			}
@@ -751,5 +726,28 @@ func (k Keeper) ChanCloseFrozen(
 	k.SetChannel(ctx, portID, channelID, channel)
 
 	emitChannelCloseFrozenEvent(ctx, portID, channelID, channel)
+	return nil
+}
+
+// chekcVersion checks that the connection's features include support for order.
+func checkVersion(connection *connectiontypes.ConnectionEnd, order types.Order) error {
+	getVersions := connection.GetVersions()
+	if len(getVersions) != 1 {
+		return errorsmod.Wrapf(
+			connectiontypes.ErrInvalidVersion,
+			"single version must be negotiated on connection before opening channel, got: %v",
+			getVersions,
+		)
+	}
+
+	// verify chain supports the requested ordering.
+	if !connectiontypes.VerifySupportedFeature(getVersions[0], order.String()) {
+		return errorsmod.Wrapf(
+			connectiontypes.ErrInvalidVersion,
+			"connection version %s does not support channel ordering: %s",
+			getVersions[0], order.String(),
+		)
+	}
+
 	return nil
 }

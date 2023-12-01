@@ -70,7 +70,7 @@ func (k Keeper) TimeoutPacket(
 			return err
 		}
 
-		consensusState, err := mProof.GetMultihopCounterpartyConsensus(k.cdc)
+		consensusState, err := mProof.GeLastHopConsensusState(k.cdc)
 		if err != nil {
 			return err
 		}
@@ -289,7 +289,7 @@ func (k Keeper) TimeoutOnClose(
 	// verify multihop proof
 	if len(channel.ConnectionHops) > 1 {
 		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			counterpartyHops, err := mProof.GetCounterpartyHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
 			if err != nil {
 				return "", nil, err
 			}
