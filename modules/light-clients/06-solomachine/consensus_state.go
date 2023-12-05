@@ -24,7 +24,7 @@ func (cs ConsensusState) GetTimestamp() uint64 {
 }
 
 // GetRoot returns nil since solo machines do not have roots.
-func (cs ConsensusState) GetRoot() exported.Root {
+func (ConsensusState) GetRoot() exported.Root {
 	return nil
 }
 

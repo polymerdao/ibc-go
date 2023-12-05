@@ -360,9 +360,9 @@ func bigEndianHeightBytes(height exported.Height) []byte {
 	return heightBytes
 }
 
-func bigEndianBytesToHeight(bytes []byte) exported.Height {
-	revisionNumber := binary.BigEndian.Uint64(bytes[:8])
-	revisionHeight := binary.BigEndian.Uint64(bytes[8:])
+func bigEndianBytesToHeight(bz []byte) exported.Height {
+	revisionNumber := binary.BigEndian.Uint64(bz[:8])
+	revisionHeight := binary.BigEndian.Uint64(bz[8:])
 	return clienttypes.NewHeight(revisionNumber, revisionHeight)
 }
 

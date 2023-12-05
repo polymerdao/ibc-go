@@ -96,20 +96,25 @@ func (p ChanPath) QueryMultihopProof(
 	keyHeight exported.Height,
 	includeKeyValue bool,
 ) (
-	multihopProof channeltypes.MsgMultihopProofs,
-	multihopProofHeight exported.Height,
-	err error,
+	channeltypes.MsgMultihopProofs,
+	exported.Height,
+	error,
 ) {
+	var (
+		multihopProof       channeltypes.MsgMultihopProofs
+		multihopProofHeight exported.Height
+		err                 error
+	)
 
 	if len(p.Paths) < 1 {
 		err = fmt.Errorf("multihop proof query requires channel path length >= 1")
-		return
+		return multihopProof, multihopProofHeight, err
 	}
 
 	// calculate proof heights along channel path
 	proofHeights := make([]*ProofHeights, len(p.Paths))
 	if err = p.calcProofHeights(0, keyHeight, proofHeights); err != nil {
-		return
+		return multihopProof, multihopProofHeight, err
 	}
 
 	// the consensus state height of the proving chain's counterparty
@@ -117,19 +122,19 @@ func (p ChanPath) QueryMultihopProof(
 	multihopProofHeight, ok := proofHeights[len(proofHeights)-1].consensusHeight.Decrement()
 	if !ok {
 		err = fmt.Errorf("failed to decrement consensusHeight for multihop proof height")
-		return
+		return multihopProof, multihopProofHeight, err
 	}
 
 	// the key/value proof height is the height of the consensusState on the first chain
 	keyHeight, ok = proofHeights[0].consensusHeight.Decrement()
 	if !ok {
 		err = fmt.Errorf("failed to decrement consensusHeight for key height")
-		return
+		return multihopProof, multihopProofHeight, err
 	}
 
 	// query the proof of the key/value on the source chain
 	if multihopProof.KeyProof, err = queryProof(p.Source(), key, keyHeight, false, includeKeyValue); err != nil {
-		return
+		return multihopProof, multihopProofHeight, err
 	}
 
 	// query proofs of consensus/connection states on intermediate chains
@@ -139,21 +144,25 @@ func (p ChanPath) QueryMultihopProof(
 		len(p.Paths)-2, proofHeights,
 		multihopProof.ConsensusProofs,
 		multihopProof.ConnectionProofs); err != nil {
-		return
+		return multihopProof, multihopProofHeight, err
 	}
 
-	return
+	return multihopProof, multihopProofHeight, nil
 }
 
 // calcProofHeights calculates the optimal proof heights to generate a multi-hop proof along the channel path
 // and performs client updates as needed.
-func (p ChanPath) calcProofHeights(pathIdx int, consensusHeight exported.Height, proofHeights []*ProofHeights) (err error) {
-	var height ProofHeights
+func (p ChanPath) calcProofHeights(pathIdx int, consensusHeight exported.Height, proofHeights []*ProofHeights) error {
+	var (
+		err    error
+		height ProofHeights
+	)
+
 	chain := p.Paths[pathIdx].EndpointB
 
 	// find minimum consensus height provable on the next chain
 	if height.proofHeight, height.consensusHeight, err = chain.QueryMinimumConsensusHeight(consensusHeight, 3); err != nil {
-		return
+		return err
 	}
 
 	// optimized consensus height query
@@ -168,7 +177,7 @@ func (p ChanPath) calcProofHeights(pathIdx int, consensusHeight exported.Height,
 	// on subsequent chains.
 	if height.proofHeight == nil {
 		if err = chain.UpdateClient(); err != nil {
-			return
+			return err
 		}
 
 		height.proofHeight = chain.GetLatestHeight()
@@ -178,16 +187,16 @@ func (p ChanPath) calcProofHeights(pathIdx int, consensusHeight exported.Height,
 	// stop on the next to last path segment
 	if pathIdx == len(p.Paths)-1 {
 		proofHeights[pathIdx] = &height
-		return
+		return err
 	}
 
 	// use the proofHeight as the next consensus height
 	if err = p.calcProofHeights(pathIdx+1, height.proofHeight, proofHeights); err != nil {
-		return
+		return err
 	}
 
 	proofHeights[pathIdx] = &height
-	return
+	return nil
 }
 
 // queryIntermediateProofs recursively queries intermediate chains in a multi-hop channel path for consensus state
@@ -198,11 +207,12 @@ func (p ChanPath) queryIntermediateProofs(
 	proofHeights []*ProofHeights,
 	consensusProofs []*channeltypes.MultihopProof,
 	connectionProofs []*channeltypes.MultihopProof,
-) (err error) {
+) error {
+	var err error
 
 	// no need to query proofs on final chain since the clientState is already known
 	if proofIdx < 0 {
-		return
+		return nil
 	}
 
 	chain := p.Paths[proofIdx].EndpointB
@@ -210,12 +220,12 @@ func (p ChanPath) queryIntermediateProofs(
 
 	// query proof of the consensusState
 	if consensusProofs[len(p.Paths)-proofIdx-2], err = queryConsensusStateProof(chain, ph.proofHeight, ph.consensusHeight); err != nil {
-		return
+		return err
 	}
 
 	// query proof of the connectionEnd
 	if connectionProofs[len(p.Paths)-proofIdx-2], err = queryConnectionProof(chain, ph.proofHeight); err != nil {
-		return
+		return err
 	}
 
 	// continue querying proofs on the next chain in the path

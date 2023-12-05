@@ -3,6 +3,8 @@ package ibctesting
 import (
 	"fmt"
 
+	"github.com/stretchr/testify/require"
+
 	errorsmod "cosmossdk.io/errors"
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -12,7 +14,6 @@ import (
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	multihop "github.com/cosmos/ibc-go/v8/modules/core/33-multihop"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
-	"github.com/stretchr/testify/require"
 )
 
 // EndpointM represents a multihop channel endpoint.
@@ -35,7 +36,9 @@ type EndpointM struct {
 
 // NewEndpointMFromLinkedPaths constructs a new EndpointM without the counterparty.
 // CONTRACT: the counterparty EndpointM must be set by the caller.
-func NewEndpointMFromLinkedPaths(path LinkedPaths) (a, z EndpointM) {
+func NewEndpointMFromLinkedPaths(path LinkedPaths) (EndpointM, EndpointM) {
+	var a, z EndpointM
+
 	a.Paths = path
 	a.Endpoint = a.Paths.A()
 	a.Counterparty = &z
@@ -47,7 +50,8 @@ func NewEndpointMFromLinkedPaths(path LinkedPaths) (a, z EndpointM) {
 	// create multihop channel paths
 	a.mChanPath = a.Paths.ToMultihopChanPath()
 	z.mChanPath = z.Paths.ToMultihopChanPath()
-	return
+
+	return a, z
 }
 
 // ChanOpenInit will construct and execute a MsgChannelOpenInit on the associated EndpointM.
@@ -73,7 +77,6 @@ func (ep *EndpointM) ChanOpenInit() error {
 
 // ChanOpenTry will construct and execute a MsgChannelOpenTry on the associated EndpointM.
 func (ep *EndpointM) ChanOpenTry(chanInitHeight exported.Height) error {
-
 	proof, proofHeight, err := ep.Counterparty.QueryChannelProof(chanInitHeight)
 	if err != nil {
 		return err
@@ -104,7 +107,6 @@ func (ep *EndpointM) ChanOpenTry(chanInitHeight exported.Height) error {
 
 // ChanOpenAck will construct and execute a MsgChannelOpenAck on the associated EndpointM.
 func (ep *EndpointM) ChanOpenAck(chanTryHeight exported.Height) error {
-
 	proof, proofHeight, err := ep.Counterparty.QueryChannelProof(chanTryHeight)
 	if err != nil {
 		return err
@@ -127,7 +129,6 @@ func (ep *EndpointM) ChanOpenAck(chanTryHeight exported.Height) error {
 
 // ChanOpenConfirm will construct and execute a MsgChannelOpenConfirm on the associated EndpointM.
 func (ep *EndpointM) ChanOpenConfirm(chanAckHeight exported.Height) error {
-
 	proof, proofHeight, err := ep.Counterparty.QueryChannelProof(chanAckHeight)
 	if err != nil {
 		return err
@@ -145,7 +146,7 @@ func (ep *EndpointM) ChanOpenConfirm(chanAckHeight exported.Height) error {
 // ChanCloseInit will construct and execute a MsgChannelCloseInit on the associated EndpointM.
 //
 // NOTE: does not work with ibc-transfer module
-func (ep *EndpointM) ChanCloseInit() error {
+func (*EndpointM) ChanCloseInit() error {
 	return nil
 }
 
@@ -269,17 +270,25 @@ func (ep *EndpointM) QueryChannelProof(channelHeight exported.Height) ([]byte, c
 }
 
 // QueryFrozenClientProof queries proof of a frozen client in the multi-hop channel path.
-func (ep *EndpointM) QueryFrozenClientProof(connectionID, clientID string, frozenHeight exported.Height) (proofConnection []byte, proofClientState []byte, proofHeight clienttypes.Height, err error) {
+func (ep *EndpointM) QueryFrozenClientProof(connectionID, clientID string, frozenHeight exported.Height) ([]byte, []byte, clienttypes.Height, error) {
+	var (
+		proofConnection  []byte
+		proofClientState []byte
+		proofHeight      clienttypes.Height
+		err              error
+	)
+
 	connectionKey := host.ConnectionKey(connectionID)
 	if proofConnection, proofHeight, err = ep.QueryMultihopProof(connectionKey, frozenHeight, true); err != nil {
-		return
+		return proofConnection, proofClientState, proofHeight, err
 	}
 
 	clientKey := host.FullClientStateKey(clientID)
 	if proofClientState, _, err = ep.QueryMultihopProof(clientKey, frozenHeight, true); err != nil {
-		return
+		return proofConnection, proofClientState, proofHeight, err
 	}
-	return
+
+	return proofConnection, proofClientState, proofHeight, nil
 }
 
 // QueryPacketProof queries the multihop packet proof on the endpoint chain.
@@ -311,21 +320,20 @@ func (ep *EndpointM) QueryPacketTimeoutProof(packet *channeltypes.Packet, packet
 }
 
 // QueryMultihopProof queries the proof for a key/value on this endpoint, which is verified on the counterparty chain.
-func (ep *EndpointM) QueryMultihopProof(key []byte, keyHeight exported.Height, includeKeyValue bool) (proof []byte, proofHeight clienttypes.Height, err error) {
-
+func (ep *EndpointM) QueryMultihopProof(key []byte, keyHeight exported.Height, includeKeyValue bool) ([]byte, clienttypes.Height, error) {
 	multiHopProof, height, err := ep.mChanPath.QueryMultihopProof(key, keyHeight, includeKeyValue)
 	if err != nil {
-		return
+		return []byte{}, clienttypes.Height{}, err
 	}
 
-	proof = ep.Chain.Codec.MustMarshal(&multiHopProof)
-
+	proof := ep.Chain.Codec.MustMarshal(&multiHopProof)
 	proofHeight, ok := height.Increment().(clienttypes.Height)
 	if !ok {
 		err = errorsmod.Wrap(channeltypes.ErrMultihopProofGeneration, "height type conversion failed")
+		return []byte{}, clienttypes.Height{}, err
 	}
 
-	return
+	return proof, proofHeight, nil
 }
 
 // ProofHeight returns the proof height passed to this endpoint where the proof is generated for the counterparty chain.
@@ -339,8 +347,8 @@ type multihopEndpoint struct {
 }
 
 // MultihopEndpoint returns a multihop.Endpoint implementation for the test endpoint.
-func (tep *Endpoint) MultihopEndpoint() multihop.Endpoint {
-	return multihopEndpoint{tep}
+func (endpoint *Endpoint) MultihopEndpoint() multihop.Endpoint {
+	return multihopEndpoint{endpoint}
 }
 
 var _ multihop.Endpoint = multihopEndpoint{}
@@ -413,7 +421,6 @@ func (mep multihopEndpoint) QueryNextConsensusHeight(minConsensusHeight exported
 // UpdateClient updates the IBC client associated with the endpoint.
 // Returns error for non-existent clients.
 func (mep multihopEndpoint) UpdateClient() (err error) {
-
 	_, found := mep.testEndpoint.Chain.App.GetIBCKeeper().ClientKeeper.GetClientState(mep.testEndpoint.Chain.GetContext(), mep.testEndpoint.ClientID)
 	if !found {
 		return fmt.Errorf("client=%s not found on chain=%s", mep.testEndpoint.ClientID, mep.testEndpoint.Chain.ChainID)

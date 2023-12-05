@@ -2,7 +2,9 @@ package types
 
 import (
 	errorsmod "cosmossdk.io/errors"
+
 	"github.com/cosmos/cosmos-sdk/codec"
+
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	ibcerrors "github.com/cosmos/ibc-go/v8/modules/core/errors"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"

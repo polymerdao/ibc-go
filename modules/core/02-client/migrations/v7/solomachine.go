@@ -262,6 +262,6 @@ func (ConsensusState) ValidateBasic() error {
 }
 
 // GetRoot panics!
-func (cs ConsensusState) GetRoot() exported.Root {
+func (ConsensusState) GetRoot() exported.Root {
 	panic("legacy solo machine is deprecated!")
 }

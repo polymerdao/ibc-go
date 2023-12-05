@@ -314,20 +314,20 @@ func (k Keeper) ChanOpenAck(
 			ctx, connectionEnd, proofHeight, proofTry,
 			channel.ConnectionHops, kvGenerator)
 
-	} else {
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-		expectedCounterparty := types.NewCounterparty(portID, channelID)
-		expectedChannel := types.NewChannel(
-			types.TRYOPEN, channel.Ordering, expectedCounterparty,
-			counterpartyHops, counterpartyVersion,
-		)
-
-		return k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofTry,
-			channel.Counterparty.PortId, counterpartyChannelID,
-			expectedChannel,
-		)
 	}
+
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	expectedCounterparty := types.NewCounterparty(portID, channelID)
+	expectedChannel := types.NewChannel(
+		types.TRYOPEN, channel.Ordering, expectedCounterparty,
+		counterpartyHops, counterpartyVersion,
+	)
+
+	return k.connectionKeeper.VerifyChannelState(
+		ctx, connectionEnd, proofHeight, proofTry,
+		channel.Counterparty.PortId, counterpartyChannelID,
+		expectedChannel,
+	)
 }
 
 // WriteOpenAckChannel writes an updated channel state for the successful OpenAck handshake step.
@@ -419,18 +419,18 @@ func (k Keeper) ChanOpenConfirm(
 			ctx, connectionEnd, proofHeight, proofAck,
 			channel.ConnectionHops, kvGenerator)
 
-	} else {
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-		counterparty := types.NewCounterparty(portID, channelID)
-		expectedChannel := types.NewChannel(
-			types.OPEN, channel.Ordering, counterparty,
-			counterpartyHops, channel.Version)
-
-		return k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofAck,
-			channel.Counterparty.PortId, channel.Counterparty.ChannelId,
-			expectedChannel)
 	}
+
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	counterparty := types.NewCounterparty(portID, channelID)
+	expectedChannel := types.NewChannel(
+		types.OPEN, channel.Ordering, counterparty,
+		counterpartyHops, channel.Version)
+
+	return k.connectionKeeper.VerifyChannelState(
+		ctx, connectionEnd, proofHeight, proofAck,
+		channel.Counterparty.PortId, channel.Counterparty.ChannelId,
+		expectedChannel)
 }
 
 // WriteOpenConfirmChannel writes an updated channel state for the successful OpenConfirm handshake step.
