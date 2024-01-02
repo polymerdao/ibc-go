@@ -147,17 +147,25 @@ func (k Keeper) VerifyConnectionState(
 	return nil
 }
 
+// CHANNEL VERIFICATION METHODS TAKE A CONNECTIONHOPS []STRING ARGUMENT INSTEAD OF
+// THE CONNECTION BEING PASSED IN DIRECTLY
+// THIS IS BECAUSE THE CHANNEL VERIFICATION MAY BE ROUTED THROUGH A SERIES OF CONNECTIONS
+
 // VerifyChannelState verifies a proof of the channel state of the specified
 // channel end, under the specified port, stored on the target machine.
 func (k Keeper) VerifyChannelState(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
 	channelID string,
 	channel exported.ChannelI,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -199,7 +207,7 @@ func (k Keeper) VerifyChannelState(
 // the specified port, specified channel, and specified sequence.
 func (k Keeper) VerifyPacketCommitment(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
@@ -207,6 +215,10 @@ func (k Keeper) VerifyPacketCommitment(
 	sequence uint64,
 	commitmentBytes []byte,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -242,7 +254,7 @@ func (k Keeper) VerifyPacketCommitment(
 // acknowledgement at the specified port, specified channel, and specified sequence.
 func (k Keeper) VerifyPacketAcknowledgement(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
@@ -250,6 +262,10 @@ func (k Keeper) VerifyPacketAcknowledgement(
 	sequence uint64,
 	acknowledgement []byte,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -286,13 +302,17 @@ func (k Keeper) VerifyPacketAcknowledgement(
 // specified sequence.
 func (k Keeper) VerifyPacketReceiptAbsence(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
 	channelID string,
 	sequence uint64,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -328,13 +348,17 @@ func (k Keeper) VerifyPacketReceiptAbsence(
 // received of the specified channel at the specified port.
 func (k Keeper) VerifyNextSequenceRecv(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
 	channelID string,
 	nextSequenceRecv uint64,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
