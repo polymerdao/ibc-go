@@ -197,36 +197,15 @@ func (k Keeper) RecvPacket(
 		)
 	}
 
-	if len(channel.ConnectionHops) > 1 {
+	commitment := types.CommitPacket(k.cdc, packet)
 
-		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.PacketCommitmentPath(
-				packet.GetSourcePort(),
-				packet.GetSourceChannel(),
-				packet.GetSequence(),
-			)
-			commitment := types.CommitPacket(k.cdc, packet)
-			return key, commitment, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proof,
-			channel.ConnectionHops, kvGenerator,
-		); err != nil {
-			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
-		}
-	} else {
-
-		commitment := types.CommitPacket(k.cdc, packet)
-
-		// verify that the counterparty did commit to sending this packet
-		if err := k.connectionKeeper.VerifyPacketCommitment(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(),
-			commitment,
-		); err != nil {
-			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
-		}
+	// verify that the counterparty did commit to sending this packet
+	if err := k.connectionKeeper.VerifyPacketCommitment(
+		ctx, channel.ConnectionHops, proofHeight, proof,
+		packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(),
+		commitment,
+	); err != nil {
+		return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
 	}
 
 	switch channel.Ordering {
@@ -456,32 +435,11 @@ func (k Keeper) AcknowledgePacket(
 		return errorsmod.Wrapf(types.ErrInvalidPacket, "commitment bytes are not equal: got (%v), expected (%v)", packetCommitment, commitment)
 	}
 
-	if len(channel.ConnectionHops) > 1 { // verify multihop proof
-
-		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.PacketAcknowledgementPath(
-				packet.GetDestPort(),
-				packet.GetDestChannel(),
-				packet.GetSequence(),
-			)
-			ackCommitment := types.CommitAcknowledgement(acknowledgement)
-			return key, ackCommitment, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proof,
-			channel.ConnectionHops, kvGenerator,
-		); err != nil {
-			return err
-		}
-
-	} else {
-		if err := k.connectionKeeper.VerifyPacketAcknowledgement(
-			ctx, connectionEnd, proofHeight, proof, packet.GetDestPort(), packet.GetDestChannel(),
-			packet.GetSequence(), acknowledgement,
-		); err != nil {
-			return err
-		}
+	if err := k.connectionKeeper.VerifyPacketAcknowledgement(
+		ctx, channel.ConnectionHops, proofHeight, proof, packet.GetDestPort(), packet.GetDestChannel(),
+		packet.GetSequence(), acknowledgement,
+	); err != nil {
+		return err
 	}
 
 	// assert packets acknowledged in order

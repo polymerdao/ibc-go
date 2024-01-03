@@ -13,7 +13,6 @@ import (
 	channeltypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
-	mh "github.com/cosmos/ibc-go/v8/modules/core/33-multihop"
 	ibcerrors "github.com/cosmos/ibc-go/v8/modules/core/errors"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
@@ -148,17 +147,25 @@ func (k Keeper) VerifyConnectionState(
 	return nil
 }
 
+// CHANNEL VERIFICATION METHODS TAKE A CONNECTIONHOPS []STRING ARGUMENT INSTEAD OF
+// THE CONNECTION BEING PASSED IN DIRECTLY
+// THIS IS BECAUSE THE CHANNEL VERIFICATION MAY BE ROUTED THROUGH A SERIES OF CONNECTIONS
+
 // VerifyChannelState verifies a proof of the channel state of the specified
 // channel end, under the specified port, stored on the target machine.
 func (k Keeper) VerifyChannelState(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
 	channelID string,
 	channel exported.ChannelI,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -185,12 +192,18 @@ func (k Keeper) VerifyChannelState(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		0, 0, // skip delay period checks for non-packet processing verification
-		proof, merklePath, bz,
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed channel state verification for client (%s)", clientID)
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			0, 0, // skip delay period checks for non-packet processing verification
+			proof, merklePath, bz,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed channel state verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, bz)
 	}
 
 	return nil
@@ -200,7 +213,7 @@ func (k Keeper) VerifyChannelState(
 // the specified port, specified channel, and specified sequence.
 func (k Keeper) VerifyPacketCommitment(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
@@ -208,6 +221,10 @@ func (k Keeper) VerifyPacketCommitment(
 	sequence uint64,
 	commitmentBytes []byte,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -228,12 +245,18 @@ func (k Keeper) VerifyPacketCommitment(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, commitmentBytes,
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed packet commitment verification for client (%s)", clientID)
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath, commitmentBytes,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed packet commitment verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, commitmentBytes)
 	}
 
 	return nil
@@ -243,7 +266,7 @@ func (k Keeper) VerifyPacketCommitment(
 // acknowledgement at the specified port, specified channel, and specified sequence.
 func (k Keeper) VerifyPacketAcknowledgement(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
@@ -251,6 +274,10 @@ func (k Keeper) VerifyPacketAcknowledgement(
 	sequence uint64,
 	acknowledgement []byte,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -271,12 +298,20 @@ func (k Keeper) VerifyPacketAcknowledgement(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, channeltypes.CommitAcknowledgement(acknowledgement),
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed packet acknowledgement verification for client (%s)", clientID)
+	value := channeltypes.CommitAcknowledgement(acknowledgement)
+
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath, value,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed packet acknowledgement verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, value)
 	}
 
 	return nil
@@ -287,13 +322,17 @@ func (k Keeper) VerifyPacketAcknowledgement(
 // specified sequence.
 func (k Keeper) VerifyPacketReceiptAbsence(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
 	channelID string,
 	sequence uint64,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -314,12 +353,18 @@ func (k Keeper) VerifyPacketReceiptAbsence(
 		return err
 	}
 
-	if err := clientState.VerifyNonMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath,
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed packet receipt absence verification for client (%s)", clientID)
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyNonMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed packet receipt absence verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopNonMembership(ctx, connectionHops, height, proof, merklePath)
 	}
 
 	return nil
@@ -329,13 +374,17 @@ func (k Keeper) VerifyPacketReceiptAbsence(
 // received of the specified channel at the specified port.
 func (k Keeper) VerifyNextSequenceRecv(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
 	portID,
 	channelID string,
 	nextSequenceRecv uint64,
 ) error {
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, "first connection in connection hops not found")
+	}
 	clientID := connection.GetClientID()
 	clientState, clientStore, err := k.getClientStateAndVerificationStore(ctx, clientID)
 	if err != nil {
@@ -356,163 +405,23 @@ func (k Keeper) VerifyNextSequenceRecv(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, sdk.Uint64ToBigEndian(nextSequenceRecv),
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed next sequence receive verification for client (%s)", clientID)
+	value := sdk.Uint64ToBigEndian(nextSequenceRecv)
+
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath, value,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed next sequence receive verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, value)
 	}
 
 	return nil
-}
-
-// VerifyMultihopMembership verifies a multi-hop membership proof.
-func (k Keeper) VerifyMultihopMembership(
-	ctx sdk.Context,
-	connection exported.ConnectionI,
-	height exported.Height,
-	proof []byte,
-	connectionHops []string,
-	kvGenerator channeltypes.KeyValueGenFunc,
-) error {
-	var multihopProof channeltypes.MsgMultihopProofs
-	if err := k.cdc.Unmarshal(proof, &multihopProof); err != nil {
-		return err
-	}
-
-	// get the last hop connection on the other side of the multihop channel
-	// the last hop connection is the connection end on the chain before the counterparty multihop chain
-	lastHopConnectionEnd, err := multihopProof.GetLastHopConnectionEnd(k.cdc, connection)
-	if err != nil {
-		return err
-	}
-
-	// generate the key/value for the expected value on the counterparty end that needs to be proven
-	key, value, err := kvGenerator(&multihopProof, lastHopConnectionEnd)
-	if err != nil {
-		return errorsmod.Wrap(err, "failed to generate key and value to prove")
-	}
-
-	// the counterparty of the last hop connection end is the connection end on the other end of the multihop channel
-	prefix := lastHopConnectionEnd.GetCounterparty().GetPrefix()
-	path, err := commitmenttypes.ApplyPrefix(prefix, commitmenttypes.NewMerklePath(key))
-	if err != nil {
-		return err
-	}
-
-	clientID := connection.GetClientID()
-	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
-
-	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
-	if !found {
-		return errorsmod.Wrap(clienttypes.ErrClientNotFound, clientID)
-	}
-
-	// check client associated with connection on this end of the multihop channel is active
-	if status := clientState.Status(ctx, clientStore, k.cdc); status != exported.Active {
-		return errorsmod.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
-	}
-
-	if clientState.GetLatestHeight().LT(height) {
-		return errorsmod.Wrapf(
-			clienttypes.ErrInvalidHeight,
-			"client state height < proof height (%d < %d), please ensure the client has been updated",
-			clientState.GetLatestHeight(), height,
-		)
-	}
-
-	delayPeriod, err := multihopProof.GetMaximumDelayPeriod(k.cdc, connection)
-	if err != nil {
-		return err
-	}
-
-	expectedTimePerBlock := k.GetParams(ctx).MaxExpectedTimePerBlock
-
-	// ensure the delayPeriod passed
-	if err := mh.VerifyDelayPeriodPassed(ctx, clientStore, height, delayPeriod, expectedTimePerBlock); err != nil {
-		return err
-	}
-
-	consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, clientID, height)
-	if !found {
-		return errorsmod.Wrapf(clienttypes.ErrConsensusStateNotFound, "consensus state not found for client ID (%s) at height (%s)", clientID, height)
-	}
-
-	return mh.VerifyMultihopMembership(k.cdc, consensusState, connectionHops, &multihopProof, path, value)
-}
-
-// VerifyMultihopNonMembership verifies a multi-hop non-membership proof.
-func (k Keeper) VerifyMultihopNonMembership(
-	ctx sdk.Context,
-	connection exported.ConnectionI,
-	height exported.Height,
-	proof []byte,
-	connectionHops []string,
-	kvGenerator channeltypes.KeyGenFunc,
-) error {
-	var mProof channeltypes.MsgMultihopProofs
-	if err := k.cdc.Unmarshal(proof, &mProof); err != nil {
-		return err
-	}
-
-	lastHopConnectionEnd, err := mProof.GetLastHopConnectionEnd(k.cdc, connection)
-	if err != nil {
-		return err
-	}
-
-	// generate the key on the counterparty end that needs to be proven
-	key, err := kvGenerator(&mProof, lastHopConnectionEnd)
-	if err != nil {
-		return errorsmod.Wrap(err, "failed to generate key")
-	}
-
-	// the counterparty of the last hop connection end is the connection end on the other end of the multihop channel
-	prefix := lastHopConnectionEnd.GetCounterparty().GetPrefix()
-	path, err := commitmenttypes.ApplyPrefix(prefix, commitmenttypes.NewMerklePath(key))
-	if err != nil {
-		return err
-	}
-
-	clientID := connection.GetClientID()
-	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
-
-	clientState, found := k.clientKeeper.GetClientState(ctx, clientID)
-	if !found {
-		return errorsmod.Wrap(clienttypes.ErrClientNotFound, clientID)
-	}
-
-	// check client associated with connection on this end of the multihop channel is active
-	if status := clientState.Status(ctx, clientStore, k.cdc); status != exported.Active {
-		return errorsmod.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
-	}
-
-	if clientState.GetLatestHeight().LT(height) {
-		return errorsmod.Wrapf(
-			clienttypes.ErrInvalidHeight,
-			"client state height < proof height (%d < %d), please ensure the client has been updated",
-			clientState.GetLatestHeight(), height,
-		)
-	}
-
-	delayPeriod, err := mProof.GetMaximumDelayPeriod(k.cdc, connection)
-	if err != nil {
-		return err
-	}
-
-	expectedTimePerBlock := k.GetParams(ctx).MaxExpectedTimePerBlock
-
-	// ensure the delayPeriod passed
-	if err := mh.VerifyDelayPeriodPassed(ctx, clientStore, height, delayPeriod, expectedTimePerBlock); err != nil {
-		return err
-	}
-
-	consensusState, found := k.clientKeeper.GetClientConsensusState(ctx, clientID, height)
-	if !found {
-		return errorsmod.Wrapf(clienttypes.ErrConsensusStateNotFound, "consensus state not found for client ID (%s) at height (%s)", clientID, height)
-	}
-
-	return mh.VerifyMultihopNonMembership(k.cdc, consensusState, connectionHops, &mProof, path)
 }
 
 // getBlockDelay calculates the block delay period from the time delay of the connection

@@ -13,6 +13,7 @@ import (
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	porttypes "github.com/cosmos/ibc-go/v8/modules/core/05-port/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
@@ -41,6 +42,15 @@ func (k Keeper) ChanOpenInit(
 	// corresponding to the connection to chain Z for the logic to be meaningful.
 	// ******************************************************************************************
 
+	// getVersions := connectionEnd.GetVersions()
+	// if len(getVersions) != 1 {
+	// 	return "", nil, errorsmod.Wrapf(
+	// 		connectiontypes.ErrInvalidVersion,
+	// 		"single version must be negotiated on connection before opening channel, got: %v",
+	// 		getVersions,
+	// 	)
+	// }
+
 	getVersions := connectionEnd.GetVersions()
 	if len(getVersions) != 1 {
 		return "", nil, errorsmod.Wrapf(
@@ -50,23 +60,12 @@ func (k Keeper) ChanOpenInit(
 		)
 	}
 
-	if len(connectionHops) == 1 {
-		getVersions := connectionEnd.GetVersions()
-		if len(getVersions) != 1 {
-			return "", nil, errorsmod.Wrapf(
-				connectiontypes.ErrInvalidVersion,
-				"single version must be negotiated on connection before opening channel, got: %v",
-				getVersions,
-			)
-		}
-
-		if !connectiontypes.VerifySupportedFeature(getVersions[0], order.String()) {
-			return "", nil, errorsmod.Wrapf(
-				connectiontypes.ErrInvalidVersion,
-				"connection version %s does not support channel ordering: %s",
-				getVersions[0], order.String(),
-			)
-		}
+	if !connectiontypes.VerifySupportedFeature(getVersions[0], order.String()) {
+		return "", nil, errorsmod.Wrapf(
+			connectiontypes.ErrInvalidVersion,
+			"connection version %s does not support channel ordering: %s",
+			getVersions[0], order.String(),
+		)
 	}
 
 	clientState, found := k.clientKeeper.GetClientState(ctx, connectionEnd.ClientId)
@@ -151,65 +150,26 @@ func (k Keeper) ChanOpenTry(
 			"connection state is not OPEN (got %s)", connectiontypes.State(connectionEnd.GetState()).String(),
 		)
 	}
+	// determine counterparty hops
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
 
-	// handle multihop case
-	if len(connectionHops) > 1 {
-		kvGenerator := func(mProof *types.MsgMultihopProofs, lastHopConnectionEnd *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			// check version support
-			if err := checkVersion(lastHopConnectionEnd, order); err != nil {
-				return "", nil, err
-			}
+	// check version support
+	if err := checkVersion(&connectionEnd, order); err != nil {
+		return "", nil, err
+	}
 
-			// channel end storekey of the counterparty channel on the other end of the multihop channel
-			key := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
+	// expectedCounterparty is the counterparty of the counterparty's channel end (i.e self)
+	expectedCounterparty := types.NewCounterparty(portID, "")
+	expectedChannel := types.NewChannel(
+		types.INIT, order, expectedCounterparty,
+		counterpartyHops, counterpartyVersion,
+	)
 
-			// connection hops
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
-			if err != nil {
-				return "", nil, err
-			}
-
-			// expectedCounterparty is the counterparty of the counterparty's channel end (i.e self)
-			expectedCounterparty := types.NewCounterparty(portID, "")
-			expectedChannel := types.NewChannel(types.INIT, order, expectedCounterparty, counterpartyHops, counterpartyVersion)
-
-			// expected value bytes
-			bz, err := k.cdc.Marshal(&expectedChannel)
-			if err != nil {
-				return "", nil, err
-			}
-
-			return key, bz, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proofInit,
-			connectionHops, kvGenerator); err != nil {
-			return "", nil, err
-		}
-
-	} else {
-		// determine counterparty hops
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-
-		// check version support
-		if err := checkVersion(&connectionEnd, order); err != nil {
-			return "", nil, err
-		}
-
-		// expectedCounterparty is the counterparty of the counterparty's channel end (i.e self)
-		expectedCounterparty := types.NewCounterparty(portID, "")
-		expectedChannel := types.NewChannel(
-			types.INIT, order, expectedCounterparty,
-			counterpartyHops, counterpartyVersion,
-		)
-
-		if err := k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofInit,
-			counterparty.PortId, counterparty.ChannelId, expectedChannel,
-		); err != nil {
-			return "", nil, err
-		}
+	if err := k.connectionKeeper.VerifyChannelState(
+		ctx, connectionHops, proofHeight, proofInit,
+		counterparty.PortId, counterparty.ChannelId, expectedChannel,
+	); err != nil {
+		return "", nil, err
 	}
 
 	var (
@@ -288,46 +248,18 @@ func (k Keeper) ChanOpenAck(
 			"connection state is not OPEN (got %s)", connectiontypes.State(connectionEnd.GetState()).String(),
 		)
 	}
-	// verify multihop proof
-	if len(channel.ConnectionHops) > 1 {
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	expectedCounterparty := types.NewCounterparty(portID, channelID)
+	expectedChannel := types.NewChannel(
+		types.TRYOPEN, channel.Ordering, expectedCounterparty,
+		counterpartyHops, counterpartyVersion,
+	)
 
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.ChannelPath(channel.Counterparty.PortId, counterpartyChannelID)
-
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
-			if err != nil {
-				return "", nil, err
-			}
-			expectedCounterparty := types.NewCounterparty(portID, channelID)
-			expectedChannel := types.NewChannel(
-				types.TRYOPEN, channel.Ordering, expectedCounterparty,
-				counterpartyHops, counterpartyVersion,
-			)
-			value, err := expectedChannel.Marshal()
-			if err != nil {
-				return "", nil, err
-			}
-			return key, value, nil
-		}
-
-		return k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proofTry,
-			channel.ConnectionHops, kvGenerator)
-
-	} else {
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-		expectedCounterparty := types.NewCounterparty(portID, channelID)
-		expectedChannel := types.NewChannel(
-			types.TRYOPEN, channel.Ordering, expectedCounterparty,
-			counterpartyHops, counterpartyVersion,
-		)
-
-		return k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofTry,
-			channel.Counterparty.PortId, counterpartyChannelID,
-			expectedChannel,
-		)
-	}
+	return k.connectionKeeper.VerifyChannelState(
+		ctx, channel.ConnectionHops, proofHeight, proofTry,
+		channel.Counterparty.PortId, counterpartyChannelID,
+		expectedChannel,
+	)
 }
 
 // WriteOpenAckChannel writes an updated channel state for the successful OpenAck handshake step.
@@ -394,43 +326,16 @@ func (k Keeper) ChanOpenConfirm(
 		)
 	}
 
-	// verify multihop proof or standard proof
-	if len(channel.ConnectionHops) > 1 {
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	counterparty := types.NewCounterparty(portID, channelID)
+	expectedChannel := types.NewChannel(
+		types.OPEN, channel.Ordering, counterparty,
+		counterpartyHops, channel.Version)
 
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
-			if err != nil {
-				return "", nil, err
-			}
-			counterparty := types.NewCounterparty(portID, channelID)
-			expectedChannel := types.NewChannel(
-				types.OPEN, channel.Ordering, counterparty,
-				counterpartyHops, channel.Version,
-			)
-			value, err := expectedChannel.Marshal()
-			if err != nil {
-				return "", nil, err
-			}
-			return key, value, nil
-		}
-
-		return k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proofAck,
-			channel.ConnectionHops, kvGenerator)
-
-	} else {
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-		counterparty := types.NewCounterparty(portID, channelID)
-		expectedChannel := types.NewChannel(
-			types.OPEN, channel.Ordering, counterparty,
-			counterpartyHops, channel.Version)
-
-		return k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofAck,
-			channel.Counterparty.PortId, channel.Counterparty.ChannelId,
-			expectedChannel)
-	}
+	return k.connectionKeeper.VerifyChannelState(
+		ctx, channel.ConnectionHops, proofHeight, proofAck,
+		channel.Counterparty.PortId, channel.Counterparty.ChannelId,
+		expectedChannel)
 }
 
 // WriteOpenConfirmChannel writes an updated channel state for the successful OpenConfirm handshake step.
@@ -548,47 +453,17 @@ func (k Keeper) ChanCloseConfirm(
 		)
 	}
 
-	// verify multihop proof
-	if len(channel.ConnectionHops) > 1 {
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	counterparty := types.NewCounterparty(portID, channelID)
+	expectedChannel := types.NewChannel(
+		types.CLOSED, channel.Ordering, counterparty,
+		counterpartyHops, channel.Version)
 
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
-
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
-			if err != nil {
-				return "", nil, err
-			}
-			counterparty := types.NewCounterparty(portID, channelID)
-			expectedChannel := types.NewChannel(
-				types.CLOSED, channel.Ordering, counterparty,
-				counterpartyHops, channel.Version,
-			)
-			value, err := expectedChannel.Marshal()
-			if err != nil {
-				return "", nil, err
-			}
-			return key, value, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proofInit,
-			channel.ConnectionHops, kvGenerator); err != nil {
-			return err
-		}
-
-	} else {
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-		counterparty := types.NewCounterparty(portID, channelID)
-		expectedChannel := types.NewChannel(
-			types.CLOSED, channel.Ordering, counterparty,
-			counterpartyHops, channel.Version)
-
-		if err := k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofInit,
-			channel.Counterparty.PortId, channel.Counterparty.ChannelId,
-			expectedChannel); err != nil {
-			return err
-		}
+	if err := k.connectionKeeper.VerifyChannelState(
+		ctx, channel.ConnectionHops, proofHeight, proofInit,
+		channel.Counterparty.PortId, channel.Counterparty.ChannelId,
+		expectedChannel); err != nil {
+		return err
 	}
 
 	k.Logger(ctx).Info("channel state updated", "port-id", portID, "channel-id", channelID, "previous-state", channel.State.String(), "new-state", types.CLOSED.String())
@@ -657,30 +532,26 @@ func (k Keeper) ChanCloseFrozen(
 		return fmt.Errorf("cannot unmarshal proof: %v", err)
 	}
 
-	var clientID string
-	connectionKVGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-		connectionIdx := len(mProof.ConsensusProofs) + 1
-		if connectionIdx > len(channel.ConnectionHops)-1 {
-			return "", nil, fmt.Errorf("connectionKVGenerator: connectionHops index out of range (%d > %d)", connectionIdx, len(channel.ConnectionHops)-1)
-		}
-		connectionID := channel.ConnectionHops[connectionIdx]
-		key := host.ConnectionPath(connectionID)
-		value := mProof.KeyProof.Value
-		var connectionEnd connectiontypes.ConnectionEnd
-		if err := k.cdc.Unmarshal(value, &connectionEnd); err != nil {
-			return "", nil, fmt.Errorf("connectionKVGenerator: %s", err)
-		}
-		clientID = connectionEnd.ClientId
-		return key, value, nil
+	connectionIdx := len(mProof.ConsensusProofs) + 1
+	if connectionIdx > len(channel.ConnectionHops)-1 {
+		return fmt.Errorf("connectionKVGenerator: connectionHops index out of range (%d > %d)", connectionIdx, len(channel.ConnectionHops)-1)
 	}
+	connectionID := channel.ConnectionHops[connectionIdx]
+	connKey := commitmenttypes.NewMerklePath(host.ConnectionPath(connectionID))
+	connValue := mProof.KeyProof.Value
+	var frozenConnection connectiontypes.ConnectionEnd
+	if err := k.cdc.Unmarshal(connValue, &connectionEnd); err != nil {
+		return fmt.Errorf("connectionKVGenerator: %s", err)
+	}
+	clientID := frozenConnection.ClientId
 
 	// truncated connectionHops (e.g. [0, 1, 2, 3] -> [0, 1])
 	connectionHops := channel.ConnectionHops[:len(mProof.ConnectionProofs)+1]
 
 	// prove connectionEnd
 	if err := k.connectionKeeper.VerifyMultihopMembership(
-		ctx, connectionEnd, proofHeight, proofConnection,
-		connectionHops, connectionKVGenerator); err != nil {
+		ctx, connectionHops, proofHeight, proofConnection,
+		connKey, connValue); err != nil {
 		return err
 	}
 
@@ -688,11 +559,8 @@ func (k Keeper) ChanCloseFrozen(
 		return fmt.Errorf("cannot unmarshal proof: %v", err)
 	}
 
-	clientStateKVGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-		key := host.FullClientStatePath(clientID)
-		value := mProof.KeyProof.Value // client state
-		return key, value, nil
-	}
+	clientKey := commitmenttypes.NewMerklePath(host.FullClientStatePath(clientID))
+	clientValue := mProof.KeyProof.Value // client proof
 
 	// unmarshal to client state interface
 	var exportedClientState exported.ClientState
@@ -713,8 +581,8 @@ func (k Keeper) ChanCloseFrozen(
 
 	// prove frozen client
 	if err := k.connectionKeeper.VerifyMultihopMembership(
-		ctx, connectionEnd, proofHeight, proofClientState,
-		connectionHops, clientStateKVGenerator); err != nil {
+		ctx, connectionHops, proofHeight, proofClientState,
+		clientKey, clientValue); err != nil {
 		return err
 	}
 
