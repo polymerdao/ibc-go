@@ -3,6 +3,7 @@ package keeper
 import (
 	errorsmod "cosmossdk.io/errors"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
@@ -13,10 +14,9 @@ import (
 // VerifyMultihopMembership verifies a multi-hop membership proof.
 func (k Keeper) VerifyMultihopMembership(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
-	connectionHops []string,
 	path exported.Path,
 	value []byte,
 ) error {
@@ -25,6 +25,10 @@ func (k Keeper) VerifyMultihopMembership(
 		return err
 	}
 
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, connectionHops[0])
+	}
 	clientID := connection.GetClientID()
 	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
 
@@ -69,10 +73,9 @@ func (k Keeper) VerifyMultihopMembership(
 // VerifyMultihopNonMembership verifies a multi-hop non-membership proof.
 func (k Keeper) VerifyMultihopNonMembership(
 	ctx sdk.Context,
-	connection exported.ConnectionI,
+	connectionHops []string,
 	height exported.Height,
 	proof []byte,
-	connectionHops []string,
 	path exported.Path,
 ) error {
 	var mProof channeltypes.MsgMultihopProofs
@@ -80,6 +83,10 @@ func (k Keeper) VerifyMultihopNonMembership(
 		return err
 	}
 
+	connection, found := k.GetConnection(ctx, connectionHops[0])
+	if !found {
+		return errorsmod.Wrap(connectiontypes.ErrConnectionNotFound, connectionHops[0])
+	}
 	clientID := connection.GetClientID()
 	clientStore := k.clientKeeper.ClientStore(ctx, clientID)
 

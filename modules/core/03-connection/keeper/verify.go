@@ -192,12 +192,18 @@ func (k Keeper) VerifyChannelState(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		0, 0, // skip delay period checks for non-packet processing verification
-		proof, merklePath, bz,
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed channel state verification for client (%s)", clientID)
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			0, 0, // skip delay period checks for non-packet processing verification
+			proof, merklePath, bz,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed channel state verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, bz)
 	}
 
 	return nil
@@ -239,12 +245,18 @@ func (k Keeper) VerifyPacketCommitment(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, commitmentBytes,
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed packet commitment verification for client (%s)", clientID)
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath, commitmentBytes,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed packet commitment verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, commitmentBytes)
 	}
 
 	return nil
@@ -286,12 +298,20 @@ func (k Keeper) VerifyPacketAcknowledgement(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, channeltypes.CommitAcknowledgement(acknowledgement),
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed packet acknowledgement verification for client (%s)", clientID)
+	value := channeltypes.CommitAcknowledgement(acknowledgement)
+
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath, value,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed packet acknowledgement verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, value)
 	}
 
 	return nil
@@ -333,12 +353,18 @@ func (k Keeper) VerifyPacketReceiptAbsence(
 		return err
 	}
 
-	if err := clientState.VerifyNonMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath,
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed packet receipt absence verification for client (%s)", clientID)
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyNonMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed packet receipt absence verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopNonMembership(ctx, connectionHops, height, proof, merklePath)
 	}
 
 	return nil
@@ -379,12 +405,20 @@ func (k Keeper) VerifyNextSequenceRecv(
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, sdk.Uint64ToBigEndian(nextSequenceRecv),
-	); err != nil {
-		return errorsmod.Wrapf(err, "failed next sequence receive verification for client (%s)", clientID)
+	value := sdk.Uint64ToBigEndian(nextSequenceRecv)
+
+	if len(connectionHops) == 1 {
+		// verify directly in case of direct connection
+		if err := clientState.VerifyMembership(
+			ctx, clientStore, k.cdc, height,
+			timeDelay, blockDelay,
+			proof, merklePath, value,
+		); err != nil {
+			return errorsmod.Wrapf(err, "failed next sequence receive verification for client (%s)", clientID)
+		}
+	} else {
+		// verify multihop proof
+		return k.VerifyMultihopMembership(ctx, connectionHops, height, proof, merklePath, value)
 	}
 
 	return nil
