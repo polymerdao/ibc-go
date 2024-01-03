@@ -126,44 +126,15 @@ func (k Keeper) TimeoutPacket(
 		}
 
 		// check that the recv sequence is as claimed
-		if len(channel.ConnectionHops) > 1 {
-			// verify multihop proof
-			kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-				key := host.NextSequenceRecvPath(packet.GetSourcePort(), packet.GetSourceChannel())
-				value := sdk.Uint64ToBigEndian(nextSequenceRecv)
-				return key, value, nil
-			}
-
-			err = k.connectionKeeper.VerifyMultihopMembership(
-				ctx, connectionEnd, proofHeight, proof,
-				channel.ConnectionHops, kvGenerator)
-		} else {
-			err = k.connectionKeeper.VerifyNextSequenceRecv(
-				ctx, connectionEnd, proofHeight, proof,
-				packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
-			)
-		}
+		err = k.connectionKeeper.VerifyNextSequenceRecv(
+			ctx, channel.ConnectionHops, proofHeight, proof,
+			packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
+		)
 	case types.UNORDERED:
-		if len(channel.ConnectionHops) > 1 {
-			// verify multihop proof
-			keyGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, error) {
-				key := host.PacketReceiptPath(
-					packet.GetSourcePort(),
-					packet.GetSourceChannel(),
-					packet.GetSequence(),
-				)
-				return key, nil
-			}
-
-			err = k.connectionKeeper.VerifyMultihopNonMembership(
-				ctx, connectionEnd, proofHeight, proof,
-				channel.ConnectionHops, keyGenerator)
-		} else {
-			err = k.connectionKeeper.VerifyPacketReceiptAbsence(
-				ctx, connectionEnd, proofHeight, proof,
-				packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
-			)
-		}
+		err = k.connectionKeeper.VerifyPacketReceiptAbsence(
+			ctx, channel.ConnectionHops, proofHeight, proof,
+			packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
+		)
 	default:
 		panic(errorsmod.Wrapf(types.ErrInvalidChannelOrdering, channel.Ordering.String()))
 	}
@@ -286,45 +257,18 @@ func (k Keeper) TimeoutOnClose(
 		return errorsmod.Wrapf(types.ErrInvalidPacket, "packet commitment bytes are not equal: got (%v), expected (%v)", commitment, packetCommitment)
 	}
 
-	// verify multihop proof
-	if len(channel.ConnectionHops) > 1 {
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
-			if err != nil {
-				return "", nil, err
-			}
-			counterparty := types.NewCounterparty(packet.GetSourcePort(), packet.GetSourceChannel())
-			expectedChannel := types.NewChannel(
-				types.CLOSED, channel.Ordering, counterparty, counterpartyHops, channel.Version,
-			)
-			value, err := expectedChannel.Marshal()
-			if err != nil {
-				return "", nil, err
-			}
-			key := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
-			return key, value, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proofClosed,
-			channel.ConnectionHops, kvGenerator); err != nil {
-			return err
-		}
-
-	} else {
-		counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
-		counterparty := types.NewCounterparty(packet.GetSourcePort(), packet.GetSourceChannel())
-		expectedChannel := types.NewChannel(
-			types.CLOSED, channel.Ordering, counterparty, counterpartyHops, channel.Version,
-		)
-		// check that the opposing channel end has closed
-		if err := k.connectionKeeper.VerifyChannelState(
-			ctx, connectionEnd, proofHeight, proofClosed,
-			channel.Counterparty.PortId, channel.Counterparty.ChannelId,
-			expectedChannel,
-		); err != nil {
-			return err
-		}
+	counterpartyHops := []string{connectionEnd.GetCounterparty().GetConnectionID()}
+	counterparty := types.NewCounterparty(packet.GetSourcePort(), packet.GetSourceChannel())
+	expectedChannel := types.NewChannel(
+		types.CLOSED, channel.Ordering, counterparty, counterpartyHops, channel.Version,
+	)
+	// check that the opposing channel end has closed
+	if err := k.connectionKeeper.VerifyChannelState(
+		ctx, channel.ConnectionHops, proofHeight, proofClosed,
+		channel.Counterparty.PortId, channel.Counterparty.ChannelId,
+		expectedChannel,
+	); err != nil {
+		return err
 	}
 
 	var err error
@@ -336,41 +280,15 @@ func (k Keeper) TimeoutOnClose(
 		}
 
 		// check that the recv sequence is as claimed
-		if len(channel.ConnectionHops) > 1 {
-			kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-				key := host.NextSequenceRecvPath(packet.GetDestPort(), packet.GetDestChannel())
-				value := sdk.Uint64ToBigEndian(nextSequenceRecv)
-				return key, value, nil
-			}
-			err = k.connectionKeeper.VerifyMultihopMembership(
-				ctx, connectionEnd, proofHeight, proof,
-				channel.ConnectionHops, kvGenerator)
-		} else {
-			err = k.connectionKeeper.VerifyNextSequenceRecv(
-				ctx, connectionEnd, proofHeight, proof,
-				packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
-			)
-		}
+		err = k.connectionKeeper.VerifyNextSequenceRecv(
+			ctx, channel.ConnectionHops, proofHeight, proof,
+			packet.GetDestPort(), packet.GetDestChannel(), nextSequenceRecv,
+		)
 	case types.UNORDERED:
-		if len(channel.ConnectionHops) > 1 {
-			keyGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, error) {
-				key := host.PacketReceiptPath(
-					packet.GetSourcePort(),
-					packet.GetSourceChannel(),
-					packet.GetSequence(),
-				)
-				return key, nil
-			}
-			err = k.connectionKeeper.VerifyMultihopNonMembership(
-				ctx, connectionEnd, proofHeight, proof,
-				channel.ConnectionHops, keyGenerator,
-			)
-		} else {
-			err = k.connectionKeeper.VerifyPacketReceiptAbsence(
-				ctx, connectionEnd, proofHeight, proof,
-				packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
-			)
-		}
+		err = k.connectionKeeper.VerifyPacketReceiptAbsence(
+			ctx, channel.ConnectionHops, proofHeight, proof,
+			packet.GetDestPort(), packet.GetDestChannel(), packet.GetSequence(),
+		)
 	default:
 		panic(errorsmod.Wrapf(types.ErrInvalidChannelOrdering, channel.Ordering.String()))
 	}

@@ -31,7 +31,7 @@ type ConnectionKeeper interface {
 	) (uint64, error)
 	VerifyChannelState(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
 		portID,
@@ -40,7 +40,7 @@ type ConnectionKeeper interface {
 	) error
 	VerifyPacketCommitment(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
 		portID,
@@ -50,7 +50,7 @@ type ConnectionKeeper interface {
 	) error
 	VerifyPacketAcknowledgement(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
 		portID,
@@ -60,7 +60,7 @@ type ConnectionKeeper interface {
 	) error
 	VerifyPacketReceiptAbsence(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
 		portID,
@@ -69,7 +69,7 @@ type ConnectionKeeper interface {
 	) error
 	VerifyNextSequenceRecv(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
 		portID,
@@ -78,19 +78,18 @@ type ConnectionKeeper interface {
 	) error
 	VerifyMultihopMembership(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
-		connectionHops []string,
-		kvGenerator KeyValueGenFunc,
+		path exported.Path,
+		value []byte,
 	) error
 	VerifyMultihopNonMembership(
 		ctx sdk.Context,
-		connection exported.ConnectionI,
+		connectionHops []string,
 		height exported.Height,
 		proof []byte,
-		connectionHops []string,
-		keyGenerator KeyGenFunc,
+		path exported.Path,
 	) error
 }
 
