@@ -36,8 +36,8 @@ func (suite *MultihopTestSuite) TestChanOpenInit() {
 		}, false},
 		{"connection doesn't exist", func() {
 			// any non-empty values
-			suite.A().ConnectionID = "connection-0"
-			suite.Z().ConnectionID = "connection-0"
+			suite.A().ConnectionID = connectionID
+			suite.Z().ConnectionID = connectionID
 		}, false},
 		{"capability is incorrect", func() {
 			suite.SetupConnections()
@@ -84,7 +84,7 @@ func (suite *MultihopTestSuite) TestChanOpenInit() {
 			portCap = suite.A().Chain.GetPortCapability(ibctesting.MockPort)
 		}, true},
 		{"unauthorized client", func() {
-			expErrorMsgSubstring = "status is Unauthorized"
+			expErrorMsgSubstring = unauthorizedStatus
 			suite.coord.SetupConnections(suite.chanPath)
 
 			// remove client from allowed list
