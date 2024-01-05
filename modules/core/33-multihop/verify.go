@@ -54,13 +54,13 @@ func VerifyDelayPeriodPassed(
 	expectedTimePerBlock uint64,
 ) error {
 	// get time and block delays
-	blockDelay := getBlockDelay(ctx, timeDelay, expectedTimePerBlock)
+	blockDelay := getBlockDelay(timeDelay, expectedTimePerBlock)
 	return tmclient.VerifyDelayPeriodPassed(ctx, store, proofHeight, timeDelay, blockDelay)
 }
 
 // getBlockDelay calculates the block delay period from the time delay of the connection
 // and the maximum expected time per block.
-func getBlockDelay(_ sdk.Context, timeDelay uint64, expectedTimePerBlock uint64) uint64 {
+func getBlockDelay(timeDelay uint64, expectedTimePerBlock uint64) uint64 {
 	// expectedTimePerBlock should never be zero, however if it is then return a 0 block delay for safety
 	// as the expectedTimePerBlock parameter was not set.
 	if expectedTimePerBlock == 0 {
