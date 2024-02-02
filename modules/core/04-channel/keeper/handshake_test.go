@@ -12,6 +12,11 @@ import (
 	ibctesting "github.com/cosmos/ibc-go/v8/testing"
 )
 
+const (
+	connectionID       = "connection-0"
+	unauthorizedStatus = "status is Unauthorized"
+)
+
 type testCase = struct {
 	msg      string
 	malleate func()
@@ -42,8 +47,8 @@ func (suite *KeeperTestSuite) TestChanOpenInit() {
 		}, false},
 		{"connection doesn't exist", func() {
 			// any non-empty values
-			path.EndpointA.ConnectionID = "connection-0"
-			path.EndpointB.ConnectionID = "connection-0"
+			path.EndpointA.ConnectionID = connectionID
+			path.EndpointB.ConnectionID = connectionID
 		}, false},
 		{"capability is incorrect", func() {
 			suite.coordinator.SetupConnections(path)
@@ -89,7 +94,7 @@ func (suite *KeeperTestSuite) TestChanOpenInit() {
 			msg:     "unauthorized client",
 			expPass: false,
 			malleate: func() {
-				expErrorMsgSubstring = "status is Unauthorized"
+				expErrorMsgSubstring = unauthorizedStatus
 				suite.coordinator.SetupConnections(path)
 
 				// remove client from allowed list
@@ -685,7 +690,7 @@ func (suite *KeeperTestSuite) TestChanCloseInit() {
 				params := suite.chainA.App.GetIBCKeeper().ClientKeeper.GetParams(suite.chainA.GetContext())
 				params.AllowedClients = []string{}
 				suite.chainA.App.GetIBCKeeper().ClientKeeper.SetParams(suite.chainA.GetContext(), params)
-				expErrorMsgSubstring = "status is Unauthorized"
+				expErrorMsgSubstring = unauthorizedStatus
 			},
 		},
 	}

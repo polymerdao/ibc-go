@@ -1,9 +1,10 @@
 package ibctesting
 
 import (
+	"github.com/stretchr/testify/suite"
+
 	channeltypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	multihop "github.com/cosmos/ibc-go/v8/modules/core/33-multihop"
-	"github.com/stretchr/testify/suite"
 )
 
 // PathM represents a multihop channel path between two chains.

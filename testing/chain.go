@@ -242,7 +242,6 @@ func (chain *TestChain) QueryStateAtHeight(key []byte, height int64, doProof boo
 //	The second returned height is the minimum consensusState height falling within the provided height range.
 //	The third returned parameter is a boolean indicating whether a client update is required.
 func (chain *TestChain) QueryNextConsensusHeight(clientID string, minConsensusHeight exported.Height) (exported.Height, exported.Height, error) {
-
 	req := clienttypes.QueryNextConsensusStateHeightRequest{
 		ClientId:       clientID,
 		RevisionNumber: minConsensusHeight.GetRevisionNumber(),
@@ -285,7 +284,6 @@ func (chain *TestChain) QueryNextConsensusHeight(clientID string, minConsensusHe
 //	The second returned height is the minimum consensusState height falling within the provided height range.
 //	The third returned parameter is a boolean indicating whether a client update is required.
 func (chain *TestChain) QueryMinimumConsensusHeight(clientID string, minConsensusHeight exported.Height, limit uint64) (exported.Height, exported.Height, error) {
-
 	// search consensusStates to find the one with the minimum height in [minHeight, maxHeight]
 	consensusHeight := minConsensusHeight
 	for i := uint64(0); i < limit; i++ {

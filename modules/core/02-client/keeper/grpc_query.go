@@ -147,7 +147,7 @@ func (k Keeper) ConsensusState(c context.Context, req *types.QueryConsensusState
 }
 
 // NextConsensusState implements the Query/GetNextConsensusState gRPC method
-func (q Keeper) NextConsensusStateHeight(c context.Context, req *types.QueryNextConsensusStateHeightRequest) (*types.QueryNextConsensusStateHeightResponse, error) {
+func (k Keeper) NextConsensusStateHeight(c context.Context, req *types.QueryNextConsensusStateHeightRequest) (*types.QueryNextConsensusStateHeightResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
@@ -163,8 +163,8 @@ func (q Keeper) NextConsensusStateHeight(c context.Context, req *types.QueryNext
 		return nil, status.Error(codes.InvalidArgument, "consensus state height cannot be 0")
 	}
 
-	clientStore := q.ClientStore(ctx, req.ClientId)
-	consensusStateHeight, _ := tm.GetNextConsensusStateHeight(clientStore, q.cdc, height)
+	clientStore := k.ClientStore(ctx, req.ClientId)
+	consensusStateHeight, _ := tm.GetNextConsensusStateHeight(clientStore, k.cdc, height)
 
 	var resp types.QueryNextConsensusStateHeightResponse
 	if consensusStateHeight != nil {

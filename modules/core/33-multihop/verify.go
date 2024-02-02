@@ -7,8 +7,10 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	storetypes "cosmossdk.io/store/types"
+
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	channeltypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
@@ -52,13 +54,13 @@ func VerifyDelayPeriodPassed(
 	expectedTimePerBlock uint64,
 ) error {
 	// get time and block delays
-	blockDelay := getBlockDelay(ctx, timeDelay, expectedTimePerBlock)
+	blockDelay := getBlockDelay(timeDelay, expectedTimePerBlock)
 	return tmclient.VerifyDelayPeriodPassed(ctx, store, proofHeight, timeDelay, blockDelay)
 }
 
 // getBlockDelay calculates the block delay period from the time delay of the connection
 // and the maximum expected time per block.
-func getBlockDelay(ctx sdk.Context, timeDelay uint64, expectedTimePerBlock uint64) uint64 {
+func getBlockDelay(timeDelay uint64, expectedTimePerBlock uint64) uint64 {
 	// expectedTimePerBlock should never be zero, however if it is then return a 0 block delay for safety
 	// as the expectedTimePerBlock parameter was not set.
 	if expectedTimePerBlock == 0 {

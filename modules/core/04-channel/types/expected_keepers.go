@@ -10,8 +10,10 @@ import (
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
 
-type KeyValueGenFunc func(*MsgMultihopProofs, *connectiontypes.ConnectionEnd) (string, []byte, error)
-type KeyGenFunc func(*MsgMultihopProofs, *connectiontypes.ConnectionEnd) (string, error)
+type (
+	KeyValueGenFunc func(*MsgMultihopProofs, *connectiontypes.ConnectionEnd) (string, []byte, error)
+	KeyGenFunc      func(*MsgMultihopProofs, *connectiontypes.ConnectionEnd) (string, error)
+)
 
 // ClientKeeper expected account IBC client keeper
 type ClientKeeper interface {
