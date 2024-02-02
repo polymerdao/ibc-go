@@ -447,7 +447,7 @@ func (k Keeper) ChannelCloseFrozen(goCtx context.Context, msg *channeltypes.MsgC
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	// Lookup module by channel capability
-	module, cap, err := k.ChannelKeeper.LookupModuleByChannel(ctx, msg.PortId, msg.ChannelId)
+	module, capability, err := k.ChannelKeeper.LookupModuleByChannel(ctx, msg.PortId, msg.ChannelId)
 	if err != nil {
 		ctx.Logger().Error("channel close frozen callback failed", "port-id", msg.PortId, "error", errorsmod.Wrap(err, "could not retrieve module from port-id"))
 		return nil, errorsmod.Wrap(err, "could not retrieve module from port-id")
@@ -466,7 +466,7 @@ func (k Keeper) ChannelCloseFrozen(goCtx context.Context, msg *channeltypes.MsgC
 		return nil, errorsmod.Wrapf(err, "channel close confirm callback failed for port ID: %s, channel ID: %s", msg.PortId, msg.ChannelId)
 	}
 
-	err = k.ChannelKeeper.ChanCloseFrozen(ctx, msg.PortId, msg.ChannelId, cap, msg.ProofConnection, msg.ProofClientState, msg.ProofHeight)
+	err = k.ChannelKeeper.ChanCloseFrozen(ctx, msg.PortId, msg.ChannelId, capability, msg.ProofConnection, msg.ProofClientState, msg.ProofHeight)
 	if err != nil {
 		ctx.Logger().Error("channel handshake close frozen callback failed", "port-id", msg.PortId, "channel-id", msg.ChannelId, "error", err.Error())
 		return nil, errorsmod.Wrap(err, "channel handshake close frozen failed")
