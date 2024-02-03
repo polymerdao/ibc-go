@@ -360,10 +360,12 @@ func (suite *KeeperTestSuite) TestVerifyPacketCommitment() {
 				suite.chainB.App.GetIBCKeeper().ConnectionKeeper.SetParams(suite.chainB.GetContext(), types.NewParams(timePerBlock))
 			}
 
+			connectionHops := []string{"0"}
+
 			commitment := channeltypes.CommitPacket(suite.chainB.App.GetIBCKeeper().Codec(), packet)
 			err = suite.chainB.App.GetIBCKeeper().ConnectionKeeper.VerifyPacketCommitment(
 				suite.chainB.GetContext(), connection, malleateHeight(proofHeight, heightDiff), proof,
-				packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(), commitment,
+				packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(), connectionHops, commitment,
 			)
 
 			if tc.expPass {

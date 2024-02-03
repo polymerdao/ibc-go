@@ -275,11 +275,6 @@ func (cs ClientState) VerifyMultihopMembership(
 		return err
 	}
 
-	var merkleProof commitmenttypes.MerkleProof
-	if err := cdc.Unmarshal(proof, &merkleProof); err != nil {
-		return errorsmod.Wrap(commitmenttypes.ErrInvalidProof, "failed to unmarshal proof into ICS 23 commitment merkle proof")
-	}
-
 	merklePath, ok := path.(commitmenttypes.MerklePath)
 	if !ok {
 		return errorsmod.Wrapf(ibcerrors.ErrInvalidType, "expected %T, got %T", commitmenttypes.MerklePath{}, path)
@@ -292,14 +287,10 @@ func (cs ClientState) VerifyMultihopMembership(
 
 	var multihopProof commitmenttypes.MsgMultihopProofs
 	if err := cdc.Unmarshal(proof, &multihopProof); err != nil {
-		return errorsmod.Wrap(err, "failed to unmarshal multi-hop proof")
+		return errorsmod.Wrap(err, "unmarshal failed")
 	}
-
 	return mh.VerifyMultihopMembership(cdc, consensusState, connectionHops, &multihopProof, merklePath, value)
 }
-
-//return merkleProof.VerifyMembership(cs.ProofSpecs, consensusState.GetRoot(), merklePath, value)
-//}
 
 // VerifyNonMembership is a generic proof verification method which verifies the absence of a given CommitmentPath at a specified height.
 // The caller is expected to construct the full CommitmentPath from a CommitmentPrefix and a standardized path (as defined in ICS 24).

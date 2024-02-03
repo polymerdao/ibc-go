@@ -4,7 +4,6 @@ import (
 	proto "github.com/cosmos/gogoproto/proto"
 
 	storetypes "cosmossdk.io/store/types"
-	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -102,7 +101,7 @@ type ClientState interface {
 		height Height,
 		delayTimePeriod uint64,
 		expectedTimePerBlock uint64,
-		proof *commitmenttypes.MsgMultihopProofs,
+		proof []byte,
 		connectionHops []string,
 		path Path,
 		value []byte,

@@ -11,6 +11,7 @@ import (
 	capabilitytypes "github.com/cosmos/ibc-go/modules/capability/types"
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
@@ -61,7 +62,7 @@ func (k Keeper) TimeoutPacket(
 		)
 	}
 
-	var mProof types.MsgMultihopProofs
+	var mProof commitmenttypes.MsgMultihopProofs
 	var proofTimestamp uint64
 	var err error
 	if len(channel.ConnectionHops) > 1 {
@@ -70,7 +71,7 @@ func (k Keeper) TimeoutPacket(
 			return err
 		}
 
-		consensusState, err := mProof.GeLastHopConsensusState(k.cdc)
+		consensusState, err := k.connectionKeeper.GetLastHopConsensusState(&mProof)
 		if err != nil {
 			return err
 		}
@@ -128,7 +129,7 @@ func (k Keeper) TimeoutPacket(
 		// check that the recv sequence is as claimed
 		if len(channel.ConnectionHops) > 1 {
 			// verify multihop proof
-			kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+			kvGenerator := func(_ *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 				key := host.NextSequenceRecvPath(packet.GetSourcePort(), packet.GetSourceChannel())
 				value := sdk.Uint64ToBigEndian(nextSequenceRecv)
 				return key, value, nil
@@ -146,7 +147,7 @@ func (k Keeper) TimeoutPacket(
 	case types.UNORDERED:
 		if len(channel.ConnectionHops) > 1 {
 			// verify multihop proof
-			keyGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, error) {
+			keyGenerator := func(_ *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, error) {
 				key := host.PacketReceiptPath(
 					packet.GetSourcePort(),
 					packet.GetSourceChannel(),
@@ -288,8 +289,8 @@ func (k Keeper) TimeoutOnClose(
 
 	// verify multihop proof
 	if len(channel.ConnectionHops) > 1 {
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
+		kvGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
+			counterpartyHops, err := k.connectionKeeper.GetCounterpartyConnectionHops(&connectionEnd, mProof)
 			if err != nil {
 				return "", nil, err
 			}
@@ -337,7 +338,7 @@ func (k Keeper) TimeoutOnClose(
 
 		// check that the recv sequence is as claimed
 		if len(channel.ConnectionHops) > 1 {
-			kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+			kvGenerator := func(_ *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 				key := host.NextSequenceRecvPath(packet.GetDestPort(), packet.GetDestChannel())
 				value := sdk.Uint64ToBigEndian(nextSequenceRecv)
 				return key, value, nil
@@ -353,7 +354,7 @@ func (k Keeper) TimeoutOnClose(
 		}
 	case types.UNORDERED:
 		if len(channel.ConnectionHops) > 1 {
-			keyGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, error) {
+			keyGenerator := func(_ *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, error) {
 				key := host.PacketReceiptPath(
 					packet.GetSourcePort(),
 					packet.GetSourceChannel(),

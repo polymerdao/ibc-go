@@ -13,6 +13,7 @@ import (
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	porttypes "github.com/cosmos/ibc-go/v8/modules/core/05-port/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
@@ -154,7 +155,7 @@ func (k Keeper) ChanOpenTry(
 
 	// handle multihop case
 	if len(connectionHops) > 1 {
-		kvGenerator := func(mProof *types.MsgMultihopProofs, lastHopConnectionEnd *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, lastHopConnectionEnd exported.ConnectionI) (string, []byte, error) {
 			// check version support
 			if err := checkVersion(lastHopConnectionEnd, order); err != nil {
 				return "", nil, err
@@ -164,7 +165,7 @@ func (k Keeper) ChanOpenTry(
 			key := host.ChannelPath(counterparty.PortId, counterparty.ChannelId)
 
 			// connection hops
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := k.connectionKeeper.GetCounterpartyConnectionHops(&connectionEnd, mProof)
 			if err != nil {
 				return "", nil, err
 			}
@@ -291,10 +292,10 @@ func (k Keeper) ChanOpenAck(
 	// verify multihop proof
 	if len(channel.ConnectionHops) > 1 {
 
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 			key := host.ChannelPath(channel.Counterparty.PortId, counterpartyChannelID)
 
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := k.connectionKeeper.GetCounterpartyConnectionHops(&connectionEnd, mProof)
 			if err != nil {
 				return "", nil, err
 			}
@@ -396,10 +397,10 @@ func (k Keeper) ChanOpenConfirm(
 
 	// verify multihop proof or standard proof
 	if len(channel.ConnectionHops) > 1 {
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 			key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
 
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := k.connectionKeeper.GetCounterpartyConnectionHops(&connectionEnd, mProof)
 			if err != nil {
 				return "", nil, err
 			}
@@ -551,10 +552,10 @@ func (k Keeper) ChanCloseConfirm(
 	// verify multihop proof
 	if len(channel.ConnectionHops) > 1 {
 
-		kvGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 			key := host.ChannelPath(channel.Counterparty.PortId, channel.Counterparty.ChannelId)
 
-			counterpartyHops, err := mProof.GetCounterpartyConnectionHops(k.cdc, &connectionEnd)
+			counterpartyHops, err := k.connectionKeeper.GetCounterpartyConnectionHops(&connectionEnd, mProof)
 			if err != nil {
 				return "", nil, err
 			}
@@ -652,13 +653,13 @@ func (k Keeper) ChanCloseFrozen(
 		)
 	}
 
-	var mProof types.MsgMultihopProofs
+	var mProof commitmenttypes.MsgMultihopProofs
 	if err := k.cdc.Unmarshal(proofConnection, &mProof); err != nil {
 		return fmt.Errorf("cannot unmarshal proof: %v", err)
 	}
 
 	var clientID string
-	connectionKVGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+	connectionKVGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 		connectionIdx := len(mProof.ConsensusProofs) + 1
 		if connectionIdx > len(channel.ConnectionHops)-1 {
 			return "", nil, fmt.Errorf("connectionKVGenerator: connectionHops index out of range (%d > %d)", connectionIdx, len(channel.ConnectionHops)-1)
@@ -688,7 +689,7 @@ func (k Keeper) ChanCloseFrozen(
 		return fmt.Errorf("cannot unmarshal proof: %v", err)
 	}
 
-	clientStateKVGenerator := func(mProof *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+	clientStateKVGenerator := func(mProof *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 		key := host.FullClientStatePath(clientID)
 		value := mProof.KeyProof.Value // client state
 		return key, value, nil
@@ -730,8 +731,12 @@ func (k Keeper) ChanCloseFrozen(
 }
 
 // chekcVersion checks that the connection's features include support for order.
-func checkVersion(connection *connectiontypes.ConnectionEnd, order types.Order) error {
-	getVersions := connection.GetVersions()
+func checkVersion(connection exported.ConnectionI, order types.Order) error {
+	c, ok := connection.(*connectiontypes.ConnectionEnd)
+	if !ok {
+		return errorsmod.Wrap(connectiontypes.ErrInvalidConnection, "connection type not supported")
+	}
+	getVersions := c.GetVersions()
 	if len(getVersions) != 1 {
 		return errorsmod.Wrapf(
 			connectiontypes.ErrInvalidVersion,

@@ -13,6 +13,7 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
@@ -443,7 +444,7 @@ func (k Keeper) AcknowledgePacket(
 
 	if len(channel.ConnectionHops) > 1 { // verify multihop proof
 
-		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(_ *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 			key := host.PacketAcknowledgementPath(
 				packet.GetDestPort(),
 				packet.GetDestChannel(),
