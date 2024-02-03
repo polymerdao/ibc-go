@@ -46,6 +46,7 @@ type ConnectionKeeper interface {
 		portID,
 		channelID string,
 		sequence uint64,
+		connectionHops []string,
 		commitmentBytes []byte,
 	) error
 	VerifyPacketAcknowledgement(

@@ -197,36 +197,21 @@ func (k Keeper) RecvPacket(
 		)
 	}
 
-	if len(channel.ConnectionHops) > 1 {
+	commitmentBytes := types.CommitPacket(k.cdc, packet)
 
-		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.PacketCommitmentPath(
-				packet.GetSourcePort(),
-				packet.GetSourceChannel(),
-				packet.GetSequence(),
-			)
-			commitment := types.CommitPacket(k.cdc, packet)
-			return key, commitment, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proof,
-			channel.ConnectionHops, kvGenerator,
-		); err != nil {
-			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
-		}
-	} else {
-
-		commitment := types.CommitPacket(k.cdc, packet)
-
-		// verify that the counterparty did commit to sending this packet
-		if err := k.connectionKeeper.VerifyPacketCommitment(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(),
-			commitment,
-		); err != nil {
-			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
-		}
+	// verify that the counterparty did commit to sending this packet
+	if err := k.connectionKeeper.VerifyPacketCommitment(
+		ctx,
+		connectionEnd,
+		proofHeight,
+		proof,
+		packet.GetSourcePort(),
+		packet.GetSourceChannel(),
+		packet.GetSequence(),
+		channel.ConnectionHops,
+		commitmentBytes,
+	); err != nil {
+		return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
 	}
 
 	switch channel.Ordering {

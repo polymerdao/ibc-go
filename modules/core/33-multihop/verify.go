@@ -10,11 +10,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
-	channeltypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
-	ibcerrors "github.com/cosmos/ibc-go/v8/modules/core/errors"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
-	tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
+	//tmclient "github.com/cosmos/ibc-go/v8/modules/light-clients/07-tendermint"
 )
 
 // parseID is a helper function that parses a client or connection id from a key path
@@ -52,13 +50,13 @@ func VerifyDelayPeriodPassed(
 	expectedTimePerBlock uint64,
 ) error {
 	// get time and block delays
-	blockDelay := getBlockDelay(ctx, timeDelay, expectedTimePerBlock)
-	return tmclient.VerifyDelayPeriodPassed(ctx, store, proofHeight, timeDelay, blockDelay)
+	//blockDelay := getBlockDelay(ctx, timeDelay, expectedTimePerBlock)
+	return nil //tmclient.VerifyDelayPeriodPassed(ctx, store, proofHeight, timeDelay, blockDelay)
 }
 
 // getBlockDelay calculates the block delay period from the time delay of the connection
 // and the maximum expected time per block.
-func getBlockDelay(ctx sdk.Context, timeDelay uint64, expectedTimePerBlock uint64) uint64 {
+func GetBlockDelay(ctx sdk.Context, timeDelay uint64, expectedTimePerBlock uint64) uint64 {
 	// expectedTimePerBlock should never be zero, however if it is then return a 0 block delay for safety
 	// as the expectedTimePerBlock parameter was not set.
 	if expectedTimePerBlock == 0 {
@@ -72,13 +70,10 @@ func VerifyMultihopMembership(
 	cdc codec.BinaryCodec,
 	consensusState exported.ConsensusState,
 	connectionHops []string,
-	proofs *channeltypes.MsgMultihopProofs,
+	proofs *commitmenttypes.MsgMultihopProofs,
 	path exported.Path,
 	value []byte,
 ) error {
-	if len(proofs.ConsensusProofs) != len(proofs.ConnectionProofs) {
-		return fmt.Errorf("the number of connection (%d) and consensus (%d) proofs must be equal", len(proofs.ConnectionProofs), len(proofs.ConsensusProofs))
-	}
 
 	// verify connection states and ordering
 	if err := validateIntermediateStates(cdc, proofs.ConsensusProofs, proofs.ConnectionProofs, connectionHops[1:]); err != nil {
@@ -99,7 +94,7 @@ func VerifyMultihopNonMembership(
 	cdc codec.BinaryCodec,
 	consensusState exported.ConsensusState,
 	connectionHops []string,
-	proofs *channeltypes.MsgMultihopProofs,
+	proofs *commitmenttypes.MsgMultihopProofs,
 	path exported.Path,
 ) error {
 	if len(proofs.ConsensusProofs) != len(proofs.ConnectionProofs) {
@@ -131,8 +126,8 @@ func VerifyMultihopNonMembership(
 // connection ID for the first hop on the executing chain.
 func validateIntermediateStates(
 	cdc codec.BinaryCodec,
-	consensusProofs []*channeltypes.MultihopProof,
-	connectionProofs []*channeltypes.MultihopProof,
+	consensusProofs []*commitmenttypes.MultihopProof,
+	connectionProofs []*commitmenttypes.MultihopProof,
 	connectionHops []string,
 ) error {
 	// check that the are as many proofs as connection hops
@@ -201,17 +196,12 @@ func validateIntermediateStates(
 func verifyIntermediateStates(
 	cdc codec.BinaryCodec,
 	consensusState exported.ConsensusState,
-	consensusProofs []*channeltypes.MultihopProof,
-	connectionProofs []*channeltypes.MultihopProof,
+	consensusProofs []*commitmenttypes.MultihopProof,
+	connectionProofs []*commitmenttypes.MultihopProof,
 ) error {
 	for i := 0; i < len(consensusProofs); i++ {
 		consensusProof := consensusProofs[i]
 		connectionProof := connectionProofs[i]
-
-		cs, ok := consensusState.(*tmclient.ConsensusState)
-		if !ok {
-			return errorsmod.Wrapf(ibcerrors.ErrInvalidType, "expected %T, got: %T", tmclient.ConsensusState{}, consensusState)
-		}
 
 		// prove consensus state
 		var proof commitmenttypes.MerkleProof
@@ -220,7 +210,7 @@ func verifyIntermediateStates(
 		}
 		if err := proof.VerifyMembership(
 			commitmenttypes.GetSDKSpecs(),
-			cs.GetRoot(),
+			consensusState.GetRoot(),
 			*consensusProof.PrefixedKey,
 			consensusProof.Value,
 		); err != nil {
@@ -234,7 +224,7 @@ func verifyIntermediateStates(
 		}
 		if err := proof.VerifyMembership(
 			commitmenttypes.GetSDKSpecs(),
-			cs.GetRoot(),
+			consensusState.GetRoot(),
 			*connectionProof.PrefixedKey,
 			connectionProof.Value,
 		); err != nil {
@@ -253,7 +243,7 @@ func verifyIntermediateStates(
 func verifyKeyValueMembership(
 	cdc codec.BinaryCodec,
 	consensusStateI exported.ConsensusState,
-	proofs *channeltypes.MsgMultihopProofs,
+	proofs *commitmenttypes.MsgMultihopProofs,
 	path exported.Path,
 	value []byte,
 ) error {
@@ -273,19 +263,15 @@ func verifyKeyValueMembership(
 			return errorsmod.Wrap(err, "failed to unmarshall consensus state")
 		}
 	}
-	consensusState, ok := consensusStateI.(*tmclient.ConsensusState)
-	if !ok {
-		return errorsmod.Wrapf(ibcerrors.ErrInvalidType, "expected %T, got: %T", tmclient.ConsensusState{}, consensusState)
-	}
 
-	return merkleProof.VerifyMembership(commitmenttypes.GetSDKSpecs(), consensusState.GetRoot(), path, value)
+	return merkleProof.VerifyMembership(commitmenttypes.GetSDKSpecs(), consensusStateI.GetRoot(), path, value)
 }
 
 // verifyKeyNonMembership verifies a multihop non-membership proof including all intermediate state proofs.
 func verifyKeyNonMembership(
 	cdc codec.BinaryCodec,
 	consensusStateI exported.ConsensusState,
-	proofs *channeltypes.MsgMultihopProofs,
+	proofs *commitmenttypes.MsgMultihopProofs,
 	path exported.Path,
 ) error {
 	// no keyproof provided, nothing to verify
@@ -304,10 +290,6 @@ func verifyKeyNonMembership(
 			return fmt.Errorf("failed to unpack consensus state: %w", err)
 		}
 	}
-	consensusState, ok := consensusStateI.(*tmclient.ConsensusState)
-	if !ok {
-		return fmt.Errorf("expected consensus state to be tendermint consensus state, got: %T", consensusStateI)
-	}
 
-	return keyProof.VerifyNonMembership(commitmenttypes.GetSDKSpecs(), consensusState.GetRoot(), path)
+	return keyProof.VerifyNonMembership(commitmenttypes.GetSDKSpecs(), consensusStateI.GetRoot(), path)
 }

@@ -4,6 +4,7 @@ import (
 	proto "github.com/cosmos/gogoproto/proto"
 
 	storetypes "cosmossdk.io/store/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -92,6 +93,21 @@ type ClientState interface {
 		value []byte,
 	) error
 
+	// VerifyMultiHopMembership is a generic proof verification method which verifies a multi-hop proof of the existence of a value at a given CommitmentPath at the specified height.
+	// The caller is expected to construct the full CommitmentPath from a CommitmentPrefix and a standardized path (as defined in ICS 24).
+	VerifyMultihopMembership(
+		ctx sdk.Context,
+		clientStore storetypes.KVStore,
+		cdc codec.BinaryCodec,
+		height Height,
+		delayTimePeriod uint64,
+		expectedTimePerBlock uint64,
+		proof *commitmenttypes.MsgMultihopProofs,
+		connectionHops []string,
+		path Path,
+		value []byte,
+	) error
+
 	// VerifyNonMembership is a generic proof verification method which verifies the absence of a given CommitmentPath at a specified height.
 	// The caller is expected to construct the full CommitmentPath from a CommitmentPrefix and a standardized path (as defined in ICS 24).
 	VerifyNonMembership(
@@ -154,6 +170,8 @@ type ConsensusState interface {
 	GetTimestamp() uint64
 
 	ValidateBasic() error
+
+	GetRoot() Root
 }
 
 // ClientMessage is an interface used to update an IBC client.
