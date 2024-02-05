@@ -7,11 +7,12 @@ import (
 
 	capabilitytypes "github.com/cosmos/ibc-go/modules/capability/types"
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
 
-type KeyValueGenFunc func(*MsgMultihopProofs, *connectiontypes.ConnectionEnd) (string, []byte, error)
-type KeyGenFunc func(*MsgMultihopProofs, *connectiontypes.ConnectionEnd) (string, error)
+type KeyValueGenFunc func(*commitmenttypes.MsgMultihopProofs, exported.ConnectionI) (string, []byte, error)
+type KeyGenFunc func(*commitmenttypes.MsgMultihopProofs, exported.ConnectionI) (string, error)
 
 // ClientKeeper expected account IBC client keeper
 type ClientKeeper interface {
@@ -46,6 +47,7 @@ type ConnectionKeeper interface {
 		portID,
 		channelID string,
 		sequence uint64,
+		connectionHops []string,
 		commitmentBytes []byte,
 	) error
 	VerifyPacketAcknowledgement(
@@ -92,6 +94,9 @@ type ConnectionKeeper interface {
 		connectionHops []string,
 		keyGenerator KeyGenFunc,
 	) error
+
+	GetCounterpartyConnectionHops(exported.ConnectionI, *commitmenttypes.MsgMultihopProofs) ([]string, error)
+	GetLastHopConsensusState(*commitmenttypes.MsgMultihopProofs) (exported.ConsensusState, error)
 }
 
 // PortKeeper expected account IBC port keeper

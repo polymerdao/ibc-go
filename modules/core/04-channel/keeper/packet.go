@@ -13,6 +13,7 @@ import (
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
 	"github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
+	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
@@ -197,36 +198,21 @@ func (k Keeper) RecvPacket(
 		)
 	}
 
-	if len(channel.ConnectionHops) > 1 {
+	commitmentBytes := types.CommitPacket(k.cdc, packet)
 
-		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
-			key := host.PacketCommitmentPath(
-				packet.GetSourcePort(),
-				packet.GetSourceChannel(),
-				packet.GetSequence(),
-			)
-			commitment := types.CommitPacket(k.cdc, packet)
-			return key, commitment, nil
-		}
-
-		if err := k.connectionKeeper.VerifyMultihopMembership(
-			ctx, connectionEnd, proofHeight, proof,
-			channel.ConnectionHops, kvGenerator,
-		); err != nil {
-			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
-		}
-	} else {
-
-		commitment := types.CommitPacket(k.cdc, packet)
-
-		// verify that the counterparty did commit to sending this packet
-		if err := k.connectionKeeper.VerifyPacketCommitment(
-			ctx, connectionEnd, proofHeight, proof,
-			packet.GetSourcePort(), packet.GetSourceChannel(), packet.GetSequence(),
-			commitment,
-		); err != nil {
-			return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
-		}
+	// verify that the counterparty did commit to sending this packet
+	if err := k.connectionKeeper.VerifyPacketCommitment(
+		ctx,
+		connectionEnd,
+		proofHeight,
+		proof,
+		packet.GetSourcePort(),
+		packet.GetSourceChannel(),
+		packet.GetSequence(),
+		channel.ConnectionHops,
+		commitmentBytes,
+	); err != nil {
+		return errorsmod.Wrap(err, "couldn't verify counterparty packet commitment")
 	}
 
 	switch channel.Ordering {
@@ -458,7 +444,7 @@ func (k Keeper) AcknowledgePacket(
 
 	if len(channel.ConnectionHops) > 1 { // verify multihop proof
 
-		kvGenerator := func(_ *types.MsgMultihopProofs, _ *connectiontypes.ConnectionEnd) (string, []byte, error) {
+		kvGenerator := func(_ *commitmenttypes.MsgMultihopProofs, _ exported.ConnectionI) (string, []byte, error) {
 			key := host.PacketAcknowledgementPath(
 				packet.GetDestPort(),
 				packet.GetDestChannel(),

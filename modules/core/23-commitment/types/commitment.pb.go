@@ -206,11 +206,93 @@ func (m *MerkleProof) GetProofs() []*_go.CommitmentProof {
 	return nil
 }
 
+// MultihopProof holds the information necessary to prove a multihop message
+type MultihopProof struct {
+	Proof       []byte      `protobuf:"bytes,2,opt,name=proof,proto3" json:"proof,omitempty"`
+	Value       []byte      `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	PrefixedKey *MerklePath `protobuf:"bytes,4,opt,name=prefixed_key,json=prefixedKey,proto3" json:"prefixed_key,omitempty"`
+}
+
+func (m *MultihopProof) Reset()         { *m = MultihopProof{} }
+func (m *MultihopProof) String() string { return proto.CompactTextString(m) }
+func (*MultihopProof) ProtoMessage()    {}
+func (*MultihopProof) Descriptor() ([]byte, []int) {
+	return fileDescriptor_7921d88972a41469, []int{4}
+}
+func (m *MultihopProof) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MultihopProof) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MultihopProof.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MultihopProof) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MultihopProof.Merge(m, src)
+}
+func (m *MultihopProof) XXX_Size() int {
+	return m.Size()
+}
+func (m *MultihopProof) XXX_DiscardUnknown() {
+	xxx_messageInfo_MultihopProof.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MultihopProof proto.InternalMessageInfo
+
+// MsgMultihopProofs holds the proof information for each intermediary hop for a multihop message
+type MsgMultihopProofs struct {
+	KeyProof         *MultihopProof   `protobuf:"bytes,2,opt,name=key_proof,json=keyProof,proto3" json:"key_proof,omitempty"`
+	ConnectionProofs []*MultihopProof `protobuf:"bytes,3,rep,name=connection_proofs,json=connectionProofs,proto3" json:"connection_proofs,omitempty"`
+	ConsensusProofs  []*MultihopProof `protobuf:"bytes,4,rep,name=consensus_proofs,json=consensusProofs,proto3" json:"consensus_proofs,omitempty"`
+}
+
+func (m *MsgMultihopProofs) Reset()         { *m = MsgMultihopProofs{} }
+func (m *MsgMultihopProofs) String() string { return proto.CompactTextString(m) }
+func (*MsgMultihopProofs) ProtoMessage()    {}
+func (*MsgMultihopProofs) Descriptor() ([]byte, []int) {
+	return fileDescriptor_7921d88972a41469, []int{5}
+}
+func (m *MsgMultihopProofs) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *MsgMultihopProofs) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_MsgMultihopProofs.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *MsgMultihopProofs) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_MsgMultihopProofs.Merge(m, src)
+}
+func (m *MsgMultihopProofs) XXX_Size() int {
+	return m.Size()
+}
+func (m *MsgMultihopProofs) XXX_DiscardUnknown() {
+	xxx_messageInfo_MsgMultihopProofs.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_MsgMultihopProofs proto.InternalMessageInfo
+
 func init() {
 	proto.RegisterType((*MerkleRoot)(nil), "ibc.core.commitment.v1.MerkleRoot")
 	proto.RegisterType((*MerklePrefix)(nil), "ibc.core.commitment.v1.MerklePrefix")
 	proto.RegisterType((*MerklePath)(nil), "ibc.core.commitment.v1.MerklePath")
 	proto.RegisterType((*MerkleProof)(nil), "ibc.core.commitment.v1.MerkleProof")
+	proto.RegisterType((*MultihopProof)(nil), "ibc.core.commitment.v1.MultihopProof")
+	proto.RegisterType((*MsgMultihopProofs)(nil), "ibc.core.commitment.v1.MsgMultihopProofs")
 }
 
 func init() {
@@ -218,27 +300,36 @@ func init() {
 }
 
 var fileDescriptor_7921d88972a41469 = []byte{
-	// 312 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x4c, 0x90, 0xb1, 0x4e, 0xeb, 0x30,
-	0x14, 0x86, 0x13, 0xdd, 0xaa, 0x97, 0xba, 0x9d, 0x2c, 0x84, 0xa0, 0x02, 0x53, 0x65, 0xa0, 0x5d,
-	0x6a, 0xab, 0xed, 0x52, 0x21, 0x26, 0x18, 0x98, 0x90, 0xaa, 0x0c, 0x0c, 0x2c, 0x28, 0x31, 0x6e,
-	0x62, 0xb5, 0xe1, 0x44, 0xb1, 0x1b, 0xd1, 0x37, 0x60, 0xe4, 0x11, 0x78, 0x1c, 0xc6, 0x8e, 0x8c,
-	0xa8, 0x79, 0x11, 0x64, 0xbb, 0x41, 0xd9, 0xce, 0xd1, 0xf9, 0xfc, 0xeb, 0xf7, 0x87, 0x86, 0x32,
-	0xe6, 0x8c, 0x43, 0x21, 0x18, 0x87, 0x2c, 0x93, 0x3a, 0x13, 0xaf, 0x9a, 0x95, 0x93, 0xc6, 0x46,
-	0xf3, 0x02, 0x34, 0xe0, 0x13, 0x19, 0x73, 0x6a, 0x40, 0xda, 0x38, 0x95, 0x93, 0xfe, 0x71, 0x02,
-	0x09, 0x58, 0x84, 0x99, 0xc9, 0xd1, 0xfd, 0x73, 0x0e, 0x2a, 0x03, 0xc5, 0x24, 0x57, 0xd3, 0x99,
-	0xc9, 0xcb, 0x0b, 0x80, 0xa5, 0x72, 0xd7, 0xe0, 0x0a, 0xa1, 0x07, 0x51, 0xac, 0xd6, 0x22, 0x04,
-	0xd0, 0x18, 0xa3, 0x56, 0x1a, 0xa9, 0xf4, 0xd4, 0x1f, 0xf8, 0xa3, 0x5e, 0x68, 0xe7, 0xeb, 0xd6,
-	0xfb, 0xe7, 0xa5, 0x17, 0x8c, 0x51, 0xcf, 0x71, 0x8b, 0x42, 0x2c, 0xe5, 0x1b, 0xbe, 0x40, 0x68,
-	0x25, 0xb6, 0xcf, 0xb9, 0xdd, 0x0e, 0x7c, 0x67, 0x25, 0xb6, 0xee, 0x1c, 0x0c, 0xeb, 0xd8, 0x45,
-	0xa4, 0x53, 0x7c, 0x86, 0x8e, 0x2c, 0x1c, 0x69, 0x13, 0xfd, 0x6f, 0xd4, 0x09, 0xff, 0x1b, 0x34,
-	0xd2, 0x69, 0x70, 0x8f, 0xba, 0x75, 0x2e, 0xc0, 0x12, 0xcf, 0x51, 0xdb, 0xd5, 0xb3, 0x5c, 0x77,
-	0x3a, 0xa0, 0xae, 0x3d, 0xb5, 0xed, 0x69, 0x39, 0xa1, 0x77, 0x7f, 0x5f, 0xb6, 0x2f, 0xc2, 0x03,
-	0x7f, 0xfb, 0xf8, 0xb5, 0x27, 0xfe, 0x6e, 0x4f, 0xfc, 0x9f, 0x3d, 0xf1, 0x3f, 0x2a, 0xe2, 0xed,
-	0x2a, 0xe2, 0x7d, 0x57, 0xc4, 0x7b, 0xba, 0x49, 0xa4, 0x4e, 0x37, 0xb1, 0x91, 0xc5, 0x6a, 0x17,
-	0x31, 0x1f, 0x27, 0xc0, 0xca, 0x39, 0xcb, 0xe0, 0x65, 0xb3, 0x16, 0xca, 0x79, 0x9f, 0xce, 0xc6,
-	0x0d, 0xf5, 0x7a, 0x9b, 0x0b, 0x15, 0xb7, 0xad, 0xa7, 0xd9, 0x6f, 0x00, 0x00, 0x00, 0xff, 0xff,
-	0x55, 0x02, 0x17, 0xe1, 0x9e, 0x01, 0x00, 0x00,
+	// 464 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x53, 0xb1, 0x8e, 0xd3, 0x40,
+	0x10, 0x8d, 0x2f, 0xe1, 0x48, 0xc6, 0x41, 0x70, 0xd6, 0x09, 0x85, 0x13, 0x98, 0xc8, 0x12, 0x5c,
+	0x9a, 0xac, 0x15, 0xa7, 0x39, 0x9d, 0xa8, 0x0e, 0x21, 0x0a, 0x14, 0x29, 0x72, 0x41, 0x41, 0x13,
+	0xd9, 0x7b, 0x1b, 0xdb, 0x4a, 0xec, 0xb1, 0xbc, 0x6b, 0x0b, 0x7f, 0x01, 0x14, 0x14, 0x7c, 0x02,
+	0x9f, 0x43, 0x79, 0x25, 0x25, 0x4a, 0x1a, 0x3e, 0x03, 0xed, 0x6e, 0x7c, 0x09, 0x12, 0x48, 0x5c,
+	0xb7, 0x33, 0xf3, 0xde, 0xdb, 0x37, 0x4f, 0xbb, 0x70, 0x9e, 0x84, 0xd4, 0xa5, 0x58, 0x30, 0x97,
+	0x62, 0x9a, 0x26, 0x22, 0x65, 0x99, 0x70, 0xab, 0xc9, 0x41, 0x45, 0xf2, 0x02, 0x05, 0x5a, 0x8f,
+	0x93, 0x90, 0x12, 0x09, 0x24, 0x07, 0xa3, 0x6a, 0x72, 0x76, 0x1a, 0x61, 0x84, 0x0a, 0xe2, 0xca,
+	0x93, 0x46, 0x9f, 0x3d, 0xa5, 0xc8, 0x53, 0xe4, 0x6e, 0x42, 0xb9, 0x37, 0x95, 0x7a, 0x79, 0x81,
+	0xb8, 0xe4, 0x7a, 0xea, 0xbc, 0x04, 0x98, 0xb1, 0x62, 0xb5, 0x66, 0x3e, 0xa2, 0xb0, 0x2c, 0xe8,
+	0xc4, 0x01, 0x8f, 0x07, 0xc6, 0xd0, 0x18, 0xf5, 0x7d, 0x75, 0xbe, 0xec, 0x7c, 0xfe, 0xf6, 0xbc,
+	0xe5, 0x8c, 0xa1, 0xaf, 0x71, 0xf3, 0x82, 0x2d, 0x93, 0x8f, 0xd6, 0x33, 0x80, 0x15, 0xab, 0x17,
+	0xb9, 0xaa, 0x76, 0xf8, 0xde, 0x8a, 0xd5, 0x7a, 0xec, 0x9c, 0x37, 0xb2, 0xf3, 0x40, 0xc4, 0xd6,
+	0x13, 0xe8, 0x2a, 0x70, 0x20, 0xa4, 0x74, 0x7b, 0xd4, 0xf3, 0xef, 0x4b, 0x68, 0x20, 0x62, 0xe7,
+	0x2d, 0x98, 0x8d, 0x2e, 0xe2, 0xd2, 0xba, 0x80, 0x63, 0x6d, 0x4f, 0xe1, 0x4c, 0x6f, 0x48, 0xb4,
+	0x7b, 0xa2, 0xdc, 0x93, 0x6a, 0x42, 0x5e, 0xdf, 0xae, 0xac, 0x18, 0xfe, 0x0e, 0xef, 0x7c, 0x31,
+	0xe0, 0xc1, 0xac, 0x5c, 0x8b, 0x24, 0xc6, 0x5c, 0x6b, 0x9d, 0xc2, 0x3d, 0x35, 0x1b, 0x1c, 0x29,
+	0x77, 0xba, 0x90, 0xdd, 0x2a, 0x58, 0x97, 0x6c, 0xd0, 0xd6, 0x5d, 0x55, 0x58, 0x6f, 0xa0, 0xaf,
+	0x57, 0x61, 0xd7, 0x8b, 0x15, 0xab, 0x07, 0x9d, 0xa1, 0x31, 0x32, 0x3d, 0x87, 0xfc, 0x3d, 0x69,
+	0xb2, 0xdf, 0xcd, 0x37, 0x1b, 0xde, 0x3b, 0x56, 0x5f, 0x76, 0x65, 0x56, 0xbf, 0x64, 0x5e, 0x9f,
+	0x8e, 0xe0, 0x64, 0xc6, 0xa3, 0x3f, 0x1c, 0x71, 0xeb, 0x0a, 0x7a, 0x3a, 0xb5, 0xc6, 0x96, 0xe9,
+	0xbd, 0xf8, 0xe7, 0x1d, 0x87, 0x54, 0xbf, 0xab, 0xb2, 0x95, 0x0b, 0xf8, 0x70, 0x42, 0x31, 0xcb,
+	0x18, 0x15, 0x09, 0x66, 0x8b, 0x5d, 0x5a, 0x6d, 0x95, 0xd6, 0x7f, 0x6a, 0x3d, 0xda, 0xf3, 0x77,
+	0xbe, 0xe6, 0x20, 0x7b, 0x9c, 0x65, 0xbc, 0xe4, 0x8d, 0x64, 0xe7, 0x2e, 0x92, 0x0f, 0x6f, 0xe9,
+	0x5a, 0x71, 0x9f, 0xc4, 0xd5, 0xfb, 0xef, 0x1b, 0xdb, 0xb8, 0xd9, 0xd8, 0xc6, 0xcf, 0x8d, 0x6d,
+	0x7c, 0xdd, 0xda, 0xad, 0x9b, 0xad, 0xdd, 0xfa, 0xb1, 0xb5, 0x5b, 0x1f, 0x5e, 0x45, 0x89, 0x88,
+	0xcb, 0x50, 0x0a, 0xbb, 0xcd, 0x23, 0x0d, 0xe9, 0x38, 0x42, 0xb7, 0xba, 0x70, 0x53, 0xbc, 0x2e,
+	0xd7, 0x8c, 0xeb, 0x0f, 0xe1, 0x4d, 0xc7, 0x07, 0x7f, 0x42, 0xd4, 0x39, 0xe3, 0xe1, 0xb1, 0x7a,
+	0xc0, 0xd3, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x53, 0xef, 0xe9, 0x24, 0x37, 0x03, 0x00, 0x00,
 }
 
 func (m *MerkleRoot) Marshal() (dAtA []byte, err error) {
@@ -370,6 +461,118 @@ func (m *MerkleProof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *MultihopProof) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MultihopProof) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MultihopProof) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.PrefixedKey != nil {
+		{
+			size, err := m.PrefixedKey.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommitment(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Value) > 0 {
+		i -= len(m.Value)
+		copy(dAtA[i:], m.Value)
+		i = encodeVarintCommitment(dAtA, i, uint64(len(m.Value)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.Proof) > 0 {
+		i -= len(m.Proof)
+		copy(dAtA[i:], m.Proof)
+		i = encodeVarintCommitment(dAtA, i, uint64(len(m.Proof)))
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *MsgMultihopProofs) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *MsgMultihopProofs) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *MsgMultihopProofs) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ConsensusProofs) > 0 {
+		for iNdEx := len(m.ConsensusProofs) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.ConsensusProofs[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintCommitment(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x22
+		}
+	}
+	if len(m.ConnectionProofs) > 0 {
+		for iNdEx := len(m.ConnectionProofs) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.ConnectionProofs[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintCommitment(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x1a
+		}
+	}
+	if m.KeyProof != nil {
+		{
+			size, err := m.KeyProof.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintCommitment(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintCommitment(dAtA []byte, offset int, v uint64) int {
 	offset -= sovCommitment(v)
 	base := offset
@@ -430,6 +633,52 @@ func (m *MerkleProof) Size() (n int) {
 	_ = l
 	if len(m.Proofs) > 0 {
 		for _, e := range m.Proofs {
+			l = e.Size()
+			n += 1 + l + sovCommitment(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *MultihopProof) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Proof)
+	if l > 0 {
+		n += 1 + l + sovCommitment(uint64(l))
+	}
+	l = len(m.Value)
+	if l > 0 {
+		n += 1 + l + sovCommitment(uint64(l))
+	}
+	if m.PrefixedKey != nil {
+		l = m.PrefixedKey.Size()
+		n += 1 + l + sovCommitment(uint64(l))
+	}
+	return n
+}
+
+func (m *MsgMultihopProofs) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.KeyProof != nil {
+		l = m.KeyProof.Size()
+		n += 1 + l + sovCommitment(uint64(l))
+	}
+	if len(m.ConnectionProofs) > 0 {
+		for _, e := range m.ConnectionProofs {
+			l = e.Size()
+			n += 1 + l + sovCommitment(uint64(l))
+		}
+	}
+	if len(m.ConsensusProofs) > 0 {
+		for _, e := range m.ConsensusProofs {
 			l = e.Size()
 			n += 1 + l + sovCommitment(uint64(l))
 		}
@@ -753,6 +1002,314 @@ func (m *MerkleProof) Unmarshal(dAtA []byte) error {
 			}
 			m.Proofs = append(m.Proofs, &_go.CommitmentProof{})
 			if err := m.Proofs[len(m.Proofs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommitment(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MultihopProof) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommitment
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MultihopProof: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MultihopProof: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Proof", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommitment
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Proof = append(m.Proof[:0], dAtA[iNdEx:postIndex]...)
+			if m.Proof == nil {
+				m.Proof = []byte{}
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Value", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommitment
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = append(m.Value[:0], dAtA[iNdEx:postIndex]...)
+			if m.Value == nil {
+				m.Value = []byte{}
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PrefixedKey", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommitment
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.PrefixedKey == nil {
+				m.PrefixedKey = &MerklePath{}
+			}
+			if err := m.PrefixedKey.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipCommitment(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *MsgMultihopProofs) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowCommitment
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: MsgMultihopProofs: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: MsgMultihopProofs: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field KeyProof", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommitment
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.KeyProof == nil {
+				m.KeyProof = &MultihopProof{}
+			}
+			if err := m.KeyProof.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConnectionProofs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommitment
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ConnectionProofs = append(m.ConnectionProofs, &MultihopProof{})
+			if err := m.ConnectionProofs[len(m.ConnectionProofs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConsensusProofs", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowCommitment
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthCommitment
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ConsensusProofs = append(m.ConsensusProofs, &MultihopProof{})
+			if err := m.ConsensusProofs[len(m.ConsensusProofs)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

@@ -17,6 +17,7 @@ import (
 
 	clienttypes "github.com/cosmos/ibc-go/v8/modules/core/02-client/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
+	mh "github.com/cosmos/ibc-go/v8/modules/core/33-multihop"
 	ibcerrors "github.com/cosmos/ibc-go/v8/modules/core/errors"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
 )
@@ -244,6 +245,51 @@ func (cs ClientState) VerifyMembership(
 	}
 
 	return merkleProof.VerifyMembership(cs.ProofSpecs, consensusState.GetRoot(), merklePath, value)
+}
+
+// VerifyMultihopMembership is a generic proof verification method which verifies a multi-hop proof of the existence of a value at a given CommitmentPath at the specified height.
+// The caller is expected to construct the full CommitmentPath from a CommitmentPrefix and a standardized path (as defined in ICS 24).
+// If a zero proof height is passed in, it will fail to retrieve the associated consensus state.
+func (cs ClientState) VerifyMultihopMembership(
+	ctx sdk.Context,
+	clientStore storetypes.KVStore,
+	cdc codec.BinaryCodec,
+	height exported.Height,
+	delayTimePeriod uint64,
+	expectedTimePerBlock uint64,
+	proof []byte,
+	connectionHops []string,
+	path exported.Path,
+	value []byte,
+) error {
+	if cs.GetLatestHeight().LT(height) {
+		return errorsmod.Wrapf(
+			ibcerrors.ErrInvalidHeight,
+			"client state height < proof height (%d < %d), please ensure the client has been updated", cs.GetLatestHeight(), height,
+		)
+	}
+
+	// ensure the delayPeriod passed
+	delayBlockPeriod := mh.GetBlockDelay(ctx, delayTimePeriod, expectedTimePerBlock)
+	if err := VerifyDelayPeriodPassed(ctx, clientStore, height, delayTimePeriod, delayBlockPeriod); err != nil {
+		return err
+	}
+
+	merklePath, ok := path.(commitmenttypes.MerklePath)
+	if !ok {
+		return errorsmod.Wrapf(ibcerrors.ErrInvalidType, "expected %T, got %T", commitmenttypes.MerklePath{}, path)
+	}
+
+	consensusState, found := GetConsensusState(clientStore, cdc, height)
+	if !found {
+		return errorsmod.Wrap(clienttypes.ErrConsensusStateNotFound, "please ensure the proof was constructed against a height that exists on the client")
+	}
+
+	var multihopProof commitmenttypes.MsgMultihopProofs
+	if err := cdc.Unmarshal(proof, &multihopProof); err != nil {
+		return errorsmod.Wrap(err, "unmarshal failed")
+	}
+	return mh.VerifyMultihopMembership(cdc, consensusState, connectionHops, &multihopProof, merklePath, value)
 }
 
 // VerifyNonMembership is a generic proof verification method which verifies the absence of a given CommitmentPath at a specified height.

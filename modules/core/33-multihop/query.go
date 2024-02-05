@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	connectiontypes "github.com/cosmos/ibc-go/v8/modules/core/03-connection/types"
-	channeltypes "github.com/cosmos/ibc-go/v8/modules/core/04-channel/types"
 	commitmenttypes "github.com/cosmos/ibc-go/v8/modules/core/23-commitment/types"
 	host "github.com/cosmos/ibc-go/v8/modules/core/24-host"
 	"github.com/cosmos/ibc-go/v8/modules/core/exported"
@@ -96,7 +95,7 @@ func (p ChanPath) QueryMultihopProof(
 	keyHeight exported.Height,
 	includeKeyValue bool,
 ) (
-	multihopProof channeltypes.MsgMultihopProofs,
+	multihopProof commitmenttypes.MsgMultihopProofs,
 	multihopProofHeight exported.Height,
 	err error,
 ) {
@@ -133,8 +132,8 @@ func (p ChanPath) QueryMultihopProof(
 	}
 
 	// query proofs of consensus/connection states on intermediate chains
-	multihopProof.ConsensusProofs = make([]*channeltypes.MultihopProof, len(p.Paths)-1)
-	multihopProof.ConnectionProofs = make([]*channeltypes.MultihopProof, len(p.Paths)-1)
+	multihopProof.ConsensusProofs = make([]*commitmenttypes.MultihopProof, len(p.Paths)-1)
+	multihopProof.ConnectionProofs = make([]*commitmenttypes.MultihopProof, len(p.Paths)-1)
 	if err = p.queryIntermediateProofs(
 		len(p.Paths)-2, proofHeights,
 		multihopProof.ConsensusProofs,
@@ -196,8 +195,8 @@ func (p ChanPath) calcProofHeights(pathIdx int, consensusHeight exported.Height,
 func (p ChanPath) queryIntermediateProofs(
 	proofIdx int,
 	proofHeights []*ProofHeights,
-	consensusProofs []*channeltypes.MultihopProof,
-	connectionProofs []*channeltypes.MultihopProof,
+	consensusProofs []*commitmenttypes.MultihopProof,
+	connectionProofs []*commitmenttypes.MultihopProof,
 ) (err error) {
 
 	// no need to query proofs on final chain since the clientState is already known
@@ -227,7 +226,7 @@ func queryConsensusStateProof(
 	chain Endpoint,
 	proofHeight exported.Height,
 	consensusHeight exported.Height,
-) (*channeltypes.MultihopProof, error) {
+) (*commitmenttypes.MultihopProof, error) {
 	key := host.FullConsensusStateKey(chain.ClientID(), consensusHeight)
 	return queryProof(chain, key, proofHeight, true, true)
 }
@@ -236,7 +235,7 @@ func queryConsensusStateProof(
 func queryConnectionProof(
 	chain Endpoint,
 	proofHeight exported.Height,
-) (*channeltypes.MultihopProof, error) {
+) (*commitmenttypes.MultihopProof, error) {
 	key := host.ConnectionKey(chain.ConnectionID())
 	return queryProof(chain, key, proofHeight, true, true)
 }
@@ -252,7 +251,7 @@ func queryProof(
 	height exported.Height,
 	includeKey bool,
 	includeValue bool,
-) (*channeltypes.MultihopProof, error) {
+) (*commitmenttypes.MultihopProof, error) {
 	if len(key) == 0 {
 		return nil, fmt.Errorf("key must be non-empty")
 	}
@@ -283,7 +282,7 @@ func queryProof(
 		valueBytes = bytes
 	}
 
-	return &channeltypes.MultihopProof{
+	return &commitmenttypes.MultihopProof{
 		Proof:       proof,
 		Value:       valueBytes,
 		PrefixedKey: keyMerklePath,

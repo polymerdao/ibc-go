@@ -217,6 +217,21 @@ func (ClientState) GetTimestampAtHeight(
 	panic(errors.New("legacy solo machine is deprecated"))
 }
 
+func (ClientState) VerifyMultihopMembership(
+	_ sdk.Context,
+	_ storetypes.KVStore,
+	_ codec.BinaryCodec,
+	_ exported.Height,
+	_ uint64,
+	_ uint64,
+	_ []byte,
+	_ []string,
+	_ exported.Path,
+	_ []byte,
+) error {
+	panic(errors.New("legacy solo machine is deprecated"))
+}
+
 // VerifyMembership panics!
 func (*ClientState) VerifyMembership(
 	ctx sdk.Context,

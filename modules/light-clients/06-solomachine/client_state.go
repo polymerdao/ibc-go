@@ -264,3 +264,18 @@ func setClientState(store storetypes.KVStore, cdc codec.BinaryCodec, clientState
 	bz := clienttypes.MustMarshalClientState(cdc, clientState)
 	store.Set(host.ClientStateKey(), bz)
 }
+
+func (ClientState) VerifyMultihopMembership(
+	_ sdk.Context,
+	_ storetypes.KVStore,
+	_ codec.BinaryCodec,
+	_ exported.Height,
+	_ uint64,
+	_ uint64,
+	_ []byte,
+	_ []string,
+	_ exported.Path,
+	_ []byte,
+) error {
+	return errorsmod.Wrap(clienttypes.ErrInvalidUpgradeClient, "cannot verify multihop membership")
+}

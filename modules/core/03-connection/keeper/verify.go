@@ -206,6 +206,7 @@ func (k Keeper) VerifyPacketCommitment(
 	portID,
 	channelID string,
 	sequence uint64,
+	connectionHops []string,
 	commitmentBytes []byte,
 ) error {
 	clientID := connection.GetClientID()
@@ -218,20 +219,49 @@ func (k Keeper) VerifyPacketCommitment(
 		return errorsmod.Wrapf(clienttypes.ErrClientNotActive, "client (%s) status is %s", clientID, status)
 	}
 
-	// get time and block delays
-	timeDelay := connection.GetDelayPeriod()
-	blockDelay := k.getBlockDelay(ctx, connection)
+	var multihopProof commitmenttypes.MsgMultihopProofs
+	if len(connectionHops) > 1 {
+		if err := k.cdc.Unmarshal(proof, &multihopProof); err != nil {
+			return errorsmod.Wrap(err, "failed to unmarshal multi-hop proof")
+		}
+	} else {
+		multihopProof.KeyProof = &commitmenttypes.MultihopProof{}
+		multihopProof.KeyProof.Proof = proof
+	}
 
+	// get maxmimum delay for any hop in the channel path
+	delayTimePeriod, err := k.GetMaximumDelayPeriod(connection, &multihopProof)
+	if err != nil {
+		return err
+	}
+	// FIXME: this may not be accurate for multi-hop channels
+	expectedTimePerBlock := k.GetParams(ctx).MaxExpectedTimePerBlock
+
+	// get the last hop connection on the other side of the multihop channel
+	// the last hop connection is the connection end on the chain before the counterparty multihop chain
+	connectionEnd, err := k.GetLastHopConnectionEnd(connection, &multihopProof)
+	if err != nil {
+		return errorsmod.Wrap(err, "failed to get connection end")
+	}
+
+	prefix := connectionEnd.GetCounterparty().GetPrefix()
 	merklePath := commitmenttypes.NewMerklePath(host.PacketCommitmentPath(portID, channelID, sequence))
-	merklePath, err = commitmenttypes.ApplyPrefix(connection.GetCounterparty().GetPrefix(), merklePath)
+	merklePath, err = commitmenttypes.ApplyPrefix(prefix, merklePath)
 	if err != nil {
 		return err
 	}
 
-	if err := clientState.VerifyMembership(
-		ctx, clientStore, k.cdc, height,
-		timeDelay, blockDelay,
-		proof, merklePath, commitmentBytes,
+	if err := clientState.VerifyMultihopMembership(
+		ctx,
+		clientStore,
+		k.cdc,
+		height,
+		delayTimePeriod,
+		expectedTimePerBlock,
+		proof, // TODO: pass in multihop proof, need to fix import cycle
+		connectionHops,
+		merklePath,
+		commitmentBytes,
 	); err != nil {
 		return errorsmod.Wrapf(err, "failed packet commitment verification for client (%s)", clientID)
 	}
@@ -376,14 +406,14 @@ func (k Keeper) VerifyMultihopMembership(
 	connectionHops []string,
 	kvGenerator channeltypes.KeyValueGenFunc,
 ) error {
-	var multihopProof channeltypes.MsgMultihopProofs
+	var multihopProof commitmenttypes.MsgMultihopProofs
 	if err := k.cdc.Unmarshal(proof, &multihopProof); err != nil {
 		return err
 	}
 
 	// get the last hop connection on the other side of the multihop channel
 	// the last hop connection is the connection end on the chain before the counterparty multihop chain
-	lastHopConnectionEnd, err := multihopProof.GetLastHopConnectionEnd(k.cdc, connection)
+	lastHopConnectionEnd, err := k.GetLastHopConnectionEnd(connection, &multihopProof)
 	if err != nil {
 		return err
 	}
@@ -396,7 +426,7 @@ func (k Keeper) VerifyMultihopMembership(
 
 	// the counterparty of the last hop connection end is the connection end on the other end of the multihop channel
 	prefix := lastHopConnectionEnd.GetCounterparty().GetPrefix()
-	path, err := commitmenttypes.ApplyPrefix(prefix, commitmenttypes.NewMerklePath(key))
+	merklePath, err := commitmenttypes.ApplyPrefix(prefix, commitmenttypes.NewMerklePath(key))
 	if err != nil {
 		return err
 	}
@@ -422,7 +452,7 @@ func (k Keeper) VerifyMultihopMembership(
 		)
 	}
 
-	delayPeriod, err := multihopProof.GetMaximumDelayPeriod(k.cdc, connection)
+	delayPeriod, err := k.GetMaximumDelayPeriod(connection, &multihopProof)
 	if err != nil {
 		return err
 	}
@@ -439,7 +469,7 @@ func (k Keeper) VerifyMultihopMembership(
 		return errorsmod.Wrapf(clienttypes.ErrConsensusStateNotFound, "consensus state not found for client ID (%s) at height (%s)", clientID, height)
 	}
 
-	return mh.VerifyMultihopMembership(k.cdc, consensusState, connectionHops, &multihopProof, path, value)
+	return mh.VerifyMultihopMembership(k.cdc, consensusState, connectionHops, &multihopProof, merklePath, value)
 }
 
 // VerifyMultihopNonMembership verifies a multi-hop non-membership proof.
@@ -451,18 +481,18 @@ func (k Keeper) VerifyMultihopNonMembership(
 	connectionHops []string,
 	kvGenerator channeltypes.KeyGenFunc,
 ) error {
-	var mProof channeltypes.MsgMultihopProofs
-	if err := k.cdc.Unmarshal(proof, &mProof); err != nil {
+	var multihopProof commitmenttypes.MsgMultihopProofs
+	if err := k.cdc.Unmarshal(proof, &multihopProof); err != nil {
 		return err
 	}
 
-	lastHopConnectionEnd, err := mProof.GetLastHopConnectionEnd(k.cdc, connection)
+	lastHopConnectionEnd, err := k.GetLastHopConnectionEnd(connection, &multihopProof)
 	if err != nil {
 		return err
 	}
 
 	// generate the key on the counterparty end that needs to be proven
-	key, err := kvGenerator(&mProof, lastHopConnectionEnd)
+	key, err := kvGenerator(&multihopProof, lastHopConnectionEnd)
 	if err != nil {
 		return errorsmod.Wrap(err, "failed to generate key")
 	}
@@ -495,7 +525,7 @@ func (k Keeper) VerifyMultihopNonMembership(
 		)
 	}
 
-	delayPeriod, err := mProof.GetMaximumDelayPeriod(k.cdc, connection)
+	delayPeriod, err := k.GetMaximumDelayPeriod(connection, &multihopProof)
 	if err != nil {
 		return err
 	}
@@ -512,7 +542,7 @@ func (k Keeper) VerifyMultihopNonMembership(
 		return errorsmod.Wrapf(clienttypes.ErrConsensusStateNotFound, "consensus state not found for client ID (%s) at height (%s)", clientID, height)
 	}
 
-	return mh.VerifyMultihopNonMembership(k.cdc, consensusState, connectionHops, &mProof, path)
+	return mh.VerifyMultihopNonMembership(k.cdc, consensusState, connectionHops, &multihopProof, path)
 }
 
 // getBlockDelay calculates the block delay period from the time delay of the connection
@@ -544,4 +574,70 @@ func (k Keeper) getClientStateAndVerificationStore(ctx sdk.Context, clientID str
 	}
 
 	return clientState, store, nil
+}
+
+// GetLastHopConnectionEnd returns the last hop connectionEnd from the perpespective of the executing chain.
+// The last hop connection is the connection end on the chain before the counterparty multihop chain (i.e. the chain on the other end of the multihop channel).
+func (k Keeper) GetLastHopConnectionEnd(c exported.ConnectionI, m *commitmenttypes.MsgMultihopProofs) (exported.ConnectionI, error) {
+	var connectionEnd connectiontypes.ConnectionEnd
+	if len(m.ConnectionProofs) > 0 {
+		// connection proofs are ordered from executing chain to counterparty,
+		// so the last hop connection end is the value of last connection proof
+		if err := k.cdc.Unmarshal(m.ConnectionProofs[len(m.ConnectionProofs)-1].Value, &connectionEnd); err != nil {
+			return nil, err
+		}
+		return &connectionEnd, nil
+	}
+
+	return c, nil
+}
+
+// GetMaximumDelayPeriod returns the maximum delay period over all connections in the multi-hop channel path.
+func (k Keeper) GetMaximumDelayPeriod(c exported.ConnectionI, m *commitmenttypes.MsgMultihopProofs) (uint64, error) {
+	delayPeriod := c.GetDelayPeriod()
+	for _, connData := range m.ConnectionProofs {
+		var connectionEnd connectiontypes.ConnectionEnd
+		if err := k.cdc.Unmarshal(connData.Value, &connectionEnd); err != nil {
+			return 0, err
+		}
+		if connectionEnd.DelayPeriod > delayPeriod {
+			delayPeriod = connectionEnd.DelayPeriod
+		}
+	}
+	return delayPeriod, nil
+}
+
+// GetCounterpartyConnectionHops returns the counterparty connectionHops.
+// connection is the connection end on one of the ends of the multihop channel, and this function returns
+// the connection hops for the connection on the other end of the multihop channel.
+// Since connection proofs are ordered from the perspective of the connection parameter, in order to get the
+// counterparty connection hops we need to reverse iterate through the proofs and then add the final
+// counterparty connection ID for connection.
+func (k Keeper) GetCounterpartyConnectionHops(c exported.ConnectionI, m *commitmenttypes.MsgMultihopProofs) (counterpartyHops []string, err error) {
+	var connectionEnd connectiontypes.ConnectionEnd
+	for _, connectionProof := range m.ConnectionProofs {
+		if err = k.cdc.Unmarshal(connectionProof.Value, &connectionEnd); err != nil {
+			return nil, err
+		}
+		counterpartyHops = append([]string{connectionEnd.GetCounterparty().GetConnectionID()}, counterpartyHops...)
+	}
+
+	// the last hop is the counterparty connection ID of the connection on the other end of the multihop channel
+	counterpartyHops = append(counterpartyHops, c.GetCounterparty().GetConnectionID())
+
+	return counterpartyHops, nil
+}
+
+// GeLastHopConsensusState returns the last hop consensusState from the perspective of the executing chain.
+// The last hop connection is the connection end on the chain before the counterparty multihop chain (i.e. the chain on the other end of the multihop channel).
+func (k Keeper) GetLastHopConsensusState(m *commitmenttypes.MsgMultihopProofs) (exported.ConsensusState, error) {
+	var consensusState exported.ConsensusState
+	if len(m.ConnectionProofs) > 0 {
+		if err := k.cdc.UnmarshalInterface(m.ConsensusProofs[len(m.ConsensusProofs)-1].Value, &consensusState); err != nil {
+			return nil, err
+		}
+	} else {
+		panic("") // TODO: is this reachable?
+	}
+	return consensusState, nil
 }
