@@ -11,7 +11,7 @@ Accepted, implemented in v6 of ibc-go
 ## Context
 
 ICS 27 (Interchain Accounts) brought a cross-chain account management protocol built upon IBC.
-It enabled chains to programatically create accounts on behalf of counterparty chains which may enable a variety of authentication methods for this interchain account.
+It enabled chains to programmatically create accounts on behalf of counterparty chains which may enable a variety of authentication methods for this interchain account.
 The initial release of ICS 27 focused on enabling authentication schemes which may not require signing with a private key, such as via on-chain mechanisms like governance.
 
 Following the initial release of ICS 27 it became evident that:
@@ -78,7 +78,7 @@ See issue [#2145](https://github.com/cosmos/ibc-go/issues/2145)
 ### Future considerations
 
 [ADR 008](https://github.com/cosmos/ibc-go/pull/1976) proposes the creation of a middleware which enables callers of an IBC packet send to perform application logic in conjunction with the IBC application.
-The underlying application can be removed at the availablity of such a middleware as that will be the preferred method for executing application logic upon a ICS 27 packet send.
+The underlying application can be removed at the availability of such a middleware as that will be the preferred method for executing application logic upon a ICS 27 packet send.
 
 ### Miscellanous
 

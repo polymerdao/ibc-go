@@ -15,7 +15,7 @@ This acknowledgement will be hashed and written into state. Thus any changes to 
 
 ICS27 executes transactions on behalf of a controller chain. Information such as the message result or message error may be returned from other SDK modules outside the control of the ICS27 module.
 It might be very valuable to return message execution information inside the ICS27 acknowledgement so that controller chain interchain account auth modules can act upon this information.
-Only determinstic information returned from the message execution is allowed to be returned in the packet acknowledgement otherwise the network will halt due to a fork in the expected app hash.
+Only deterministic information returned from the message execution is allowed to be returned in the packet acknowledgement otherwise the network will halt due to a fork in the expected app hash.
 
 ## Decision
 
@@ -37,7 +37,7 @@ func deterministicResponseDeliverTx(response *abci.ResponseDeliverTx) *abci.Resp
 ### Successful acknowledgements
 
 Successful acknowledgements should return information about the transaction execution.
-Given the determinstic fields in the `abci.ResponseDeliverTx`, the transaction `Data` can be used to indicate information about the transaction execution.
+Given the deterministic fields in the `abci.ResponseDeliverTx`, the transaction `Data` can be used to indicate information about the transaction execution.
 The `abci.ResponseDeliverTx.Data` will be set in the ICS27 packet acknowledgement upon successful transaction execution.
 
 The format for the `abci.ResponseDeliverTx.Data` is constructed by the SDK.
@@ -96,10 +96,10 @@ A test has been [written](https://github.com/cosmos/ibc-go/blob/v3.0.0/modules/a
 
 ### Error acknowledgements
 
-As indicated above, the `abci.ResponseDeliverTx.Code` is determinstic.
+As indicated above, the `abci.ResponseDeliverTx.Code` is deterministic.
 Upon transaction execution errors, an error acknowledgement should be returned including the abci code.
 
-A test has been [written](https://github.com/cosmos/ibc-go/blob/v3.0.0/modules/apps/27-interchain-accounts/host/types/ack_test.go#L41-#L82) to fail if the ABCI code is no longer determinstic.
+A test has been [written](https://github.com/cosmos/ibc-go/blob/v3.0.0/modules/apps/27-interchain-accounts/host/types/ack_test.go#L41-#L82) to fail if the ABCI code is no longer deterministic.
 
 ## Consequences
 
@@ -113,7 +113,7 @@ A test has been [written](https://github.com/cosmos/ibc-go/blob/v3.0.0/modules/a
 ### Negative
 
 * the security assumptions of this decision rest on the inclusion of the ABCI error code and the Msg response in the ResponseDeliverTx hash created by Tendermint
-* events are non-determinstic and cannot be included in the packet acknowledgement
+* events are non-deterministic and cannot be included in the packet acknowledgement
 
 ### Neutral
 

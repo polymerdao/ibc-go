@@ -175,7 +175,7 @@ func (suite *KeeperTestSuite) SetupTest() {
 
 ```
 
-To create interaction between chainA and chainB, we need to contruct a `Path` these chains will use.
+To create interaction between chainA and chainB, we need to construct a `Path` these chains will use.
 A path contains two endpoints, `EndpointA` and `EndpointB` (corresponding to the order of the chains passed
 into the `NewPath` function). A path is a pointer and its values will be filled in as necessary during the
 setup portion of testing.

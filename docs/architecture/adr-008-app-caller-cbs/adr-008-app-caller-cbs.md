@@ -402,7 +402,7 @@ Chains are expected to specify a `chainDefinedActorCallbackLimit` to ensure that
 
 ### Positive
 
-- IBC Actors can now programatically execute logic that involves sending a packet and then performing some additional logic once the packet lifecycle is complete
+- IBC Actors can now programmatically execute logic that involves sending a packet and then performing some additional logic once the packet lifecycle is complete
 - Middleware implementing ADR-8 can be generally used for any application
 - Leverages the same callback architecture used between core IBC and IBC applications
 
